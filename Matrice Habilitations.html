@@ -337,6 +337,9 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;paddi
 .list .drag{opacity:.4}
 .list .dropb{box-shadow:inset 0 2px 0 var(--acc)}
 .list .dropa{box-shadow:inset 0 -2px 0 var(--acc)}
+.list .it .grip{float:none;flex:none;margin:0 -2px 0 -6px;cursor:grab;opacity:.55}
+.list .it:hover .grip{opacity:1;color:var(--acc)}
+.list .it .nm{flex:1;min-width:0}
 .list .it .n{font-size:11px;opacity:.75;font-weight:400;flex:none;font-variant-numeric:tabular-nums}
 
 /* ---------- fiche (et détail de la recherche inversée) ---------- */
@@ -450,7 +453,7 @@ td input.ci{width:100%;border:1px solid var(--acc);background:var(--card);paddin
 
 /* ---------- matrice : en-têtes à plat, coches, codes en texte, grille ---------- */
 .mtb{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 10px;border-bottom:1px solid var(--line)}
-.mtb input[type=search]{width:16rem;max-width:100%}
+.mtb input[type=search]{width:13rem;max-width:100%}
 .mtb select{width:auto}
 .mleg{display:flex;align-items:center;gap:12px;margin-left:auto;color:var(--ink3);font-size:11.5px;flex-wrap:wrap}
 .mleg span{display:inline-flex;align-items:center;gap:5px}
@@ -1128,9 +1131,8 @@ body.lecture [data-da="st"]{pointer-events:none}
       <div class="isearch"><i data-ic="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"></path><path d="M21 21l-6 -6"></path></svg></i><input id="qm" type="search" placeholder="Filtrer les fonctions…" autocomplete="off"></div>
       <select id="mfam" title="Famille"></select>
       <select id="msec" title="N'afficher que les applications d'une rubrique de la fiche"><option value="">Toutes les rubriques</option></select>
-      <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
-        <input type="checkbox" id="onlyq" style="width:auto"> lignes avec un « ? »</label>
-      <div class="mleg" data-ui="codes"><span class="mlc" id="mlegCodes"><span class="lx"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5l10 -10"></path></svg> accordé</span><span><b style="color:var(--acc);font-weight:500">5</b> n° de profil</span><span><span class="b q">?</span> à confirmer</span></span>
+      <div class="isearch"><i data-ic="search"></i><input id="qa" type="search" placeholder="Filtrer les applications…" autocomplete="off" style="width:12rem"></div>
+      <div class="mleg" data-ui="codes">
         <details class="help"><summary>Raccourcis clavier</summary><div class="hb">
           Cliquez une cellule, puis :<br>
           <kbd>Espace</kbd> bascule vide → <b>X</b> → <b>?</b> → vide (une cellule à code s'ouvre en saisie)<br>
@@ -1236,7 +1238,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.2.7';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.2.8';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -2290,8 +2292,7 @@ function renderFList(){
       host.appendChild(hd); }
     const nb = APPS.filter(a=>cellOf(f,a)).length;
     const it = el('div','it'+(SELROW===f.row?' on':''),
-      '<span>'+esc(f.nom)+'</span><span class="n">'+nb+'</span>');
-    it.title = nb+' accès renseignés sur '+APPS.length+' applications'+(dnd ? ' — glissez pour déplacer' : '');
+      (dnd ? '<span class="grip" aria-hidden="true">⠿</span>' : '')+'<span class="nm">'+esc(f.nom)+'</span><span class="n">'+nb+'</span>');
     it.dataset.row = f.row;
     if(dnd) it.draggable = true;
     it.onclick = ()=>{ selectF(f.row); renderFList(); renderFiche(); };
@@ -3789,7 +3790,7 @@ let MSEC = '', MAPPS = [];
 const matSub = () => plural(MAT.fonctions.length,'fonction')+' × '+plural(MAPPS.length,'application')+
   (MSEC ? ' (rubrique « '+secName(MSEC)+' », sur '+APPS.length+')' : '');
 function renderMat(){
-  const q = canon($('qm').value), onlyq = $('onlyq').checked;
+  const q = canon($('qm').value), qa = canon($('qa').value);
   /* liste des familles du filtre, gardée à jour (une famille peut apparaître ou disparaître) */
   const fams = groupes();
   if(MFAM && fams.indexOf(MFAM)<0) MFAM = '';
@@ -3798,11 +3799,10 @@ function renderMat(){
   if(MSEC && !SECTIONS.some(s=>s[2]===MSEC)) MSEC = '';
   $('msec').innerHTML = '<option value="">Toutes les rubriques</option>'+
     SECTIONS.map(s=>'<option value="'+s[2]+'"'+(s[2]===MSEC?' selected':'')+'>'+esc(s[0])+' ('+s[1].length+')</option>').join('');
-  MAPPS = MSEC ? APPS.filter(a=>secOf(a)===MSEC) : APPS.slice();
+  MAPPS = (MSEC ? APPS.filter(a=>secOf(a)===MSEC) : APPS.slice()).filter(a=>!qa || canon(a).includes(qa));
   MVIS = ordered().filter(f=>{
     if(MFAM && f.groupe!==MFAM) return false;
     if(q && !canon(f.nom+' '+f.groupe).includes(q)) return false;
-    if(onlyq && !MAPPS.some(a=>isQ(cellOf(f,a)))) return false;
     return true;
   });
   $('msub').textContent = matSub();
@@ -3835,7 +3835,6 @@ function renderMat(){
   if(!MVIS.length) h += '<tr><td class="f" style="color:var(--ink3);cursor:default">Aucune fonction ne correspond.</td>'+
                         '<td colspan="'+nc+'"></td></tr>';
   $('mat').innerHTML = h+'</tbody></table>';
-  $('mlegCodes').innerHTML = codeLegend();
   if(rangeMulti()) paintRange();
 }
 /* surbrillance de la colonne survolée (réglable) */
@@ -4037,7 +4036,7 @@ $('matwrap').addEventListener('paste',e=>{
   pasteBlock(t ? t.replace(/\r\n?/g,'\n').replace(/\n$/,'').split('\n').map(l=>l.split('\t').map(x=>x.trim())) : CLIP);
 });
 $('qm').addEventListener('input',()=>{ renderMat(); });
-$('onlyq').addEventListener('change',()=>{ renderMat(); });
+$('qa').addEventListener('input',()=>{ MEND = null; renderMat(); });
 $('mfam').addEventListener('change',()=>{ MFAM = $('mfam').value; renderMat(); });
 $('msec').addEventListener('change',()=>{ MSEC = $('msec').value; MEND = null; renderMat(); });
 $('resetMat').onclick = ()=>{
