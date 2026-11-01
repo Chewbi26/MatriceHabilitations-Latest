@@ -1236,7 +1236,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.2.3';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.2.4';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -3080,8 +3080,9 @@ function buildRes(){
       if(c.length) fns.push({f:f,note:c.join(', '),a:COL_PART,codes:c});
     });
     push('Dossier partagé',d,plural(codes.length,'profil')+' de partage',fns,'',
-      {how:'Ce dossier est donné par un profil de partage : pour l\'ajouter à une fonction, donnez-lui un de ces profils '+
-           '(rubrique « Profil de partage » de la liste). Retirer l\'accès retire le profil à la fonction.'});
+      {how:'Ce dossier est donné par un profil de partage : « Donner à une fonction… » attribue un profil qui le contient '+
+           'ou crée un profil dédié. Retirer l\'accès retire le profil, donc tous ses dossiers, à la fonction.',
+       add:COL_PART ? {cols:[COL_PART], dossier:d} : null});
   });
   (DICO.mailp||[]).forEach(p=>{
     const fns = MAT.fonctions.filter(f=>COL_MAIL && splitCodes(cellOf(f,COL_MAIL)).indexOf(p.code)>=0)
@@ -3172,7 +3173,9 @@ function renderRDet(){
           (r.sub?' · '+esc(r.sub):'')+' · '+plural(r.fns.length,'fonction')+'</div></div>'+
           '<div class="a no-print">'+
           (nChk ? '<button class="btn sm dg" id="rdRm" title="Retirer cet accès aux fonctions cochées">'+ic('x')+' Retirer ('+nChk+')</button>' : '')+
-          (r.add ? '<button class="btn sm" id="rdAdd" title="Donner cet accès à d\'autres fonctions">'+ic('plus')+' Ajouter des fonctions…</button>' : '')+
+          (r.add ? (r.add.dossier!=null
+            ? '<button class="btn sm" id="rdAdd" title="Donner ce dossier à une fonction, par un profil de partage existant ou un profil dédié">'+ic('plus')+' Donner à une fonction…</button>'
+            : '<button class="btn sm" id="rdAdd" title="Donner cet accès à d\'autres fonctions">'+ic('plus')+' Ajouter des fonctions…</button>') : '')+
           (r.fns.length ? '<button class="btn sm" id="rdPrint" title="Imprimer la liste (pour le référent de l\'application)">'+
             ic('printer')+' Imprimer</button><button class="btn sm" id="rdXl" title="Télécharger cette liste au format Excel">'+
             ic('file-spreadsheet')+' Excel</button>' : '')+'</div></div>';
@@ -3181,7 +3184,7 @@ function renderRDet(){
   if(!r.fns.length){
     h += '<div class="note w" style="margin:14px 18px">Aucune fonction de la matrice ne possède cette ressource. '+
          'Soit elle n\'est pas encore attribuée, soit son libellé diffère de celui utilisé dans la matrice.'+
-         (r.add ? ' « Ajouter des fonctions… » la leur donne.' : '')+'</div>';
+         (r.add ? (r.add.dossier!=null ? ' « Donner à une fonction… » la leur donne.' : ' « Ajouter des fonctions… » la leur donne.') : '')+'</div>';
   }else{
     const all = act && nChk===Object.keys(RDROWS).length;
     h += '<table class="rdt"><thead><tr>'+
@@ -3233,8 +3236,43 @@ function resRemove(r, list){
   });
 }
 /* donne la ressource à d'autres fonctions : application → « X » (à préciser ensuite avec ✎), code → ajouté à la case */
+/* un dossier partagé est donné par un profil de partage : on choisit un profil qui le contient (avec ses autres
+   dossiers) ou un profil dédié, créé à la première attribution (droit CT ou L sur ce dossier), puis les fonctions */
+function resAddDossier(r){
+  const d = r.add.dossier, a = COL_PART;
+  if(isLocked()){ lockedMsg(); return; }
+  const avec = DICO.partages.filter(p=>p.dossiers.indexOf(d)>=0);
+  const opts = avec.map(p=>({v:p.code, l:p.code+' — '+(p.libelle||'')+' · '+(pDroit(p,d) ? PCOURT[pDroit(p,d)] : 'droit non précisé')+
+                             (p.dossiers.length>1 ? ' (+'+(p.dossiers.length-1)+' autre'+(p.dossiers.length>2?'s':'')+' dossier'+(p.dossiers.length>2?'s':'')+')' : ' (ce dossier seul)')}))
+    .concat([{v:'', l:'— Créer un profil dédié à ce dossier —'}]);
+  form('Donner « '+d+' » à une fonction', [
+    {k:'prof', type:'select', label:'Profil de partage à attribuer', value:avec.length ? avec[0].code : '', options:opts, wide:true,
+     hint:'Un profil existant donne aussi ses autres dossiers à la fonction (nombre indiqué).'},
+    {k:'droit', type:'select', label:'Profil dédié : droit sur ce dossier', value:'ct', options:[{v:'ct', l:'Contrôle total (CT)'}, {v:'l', l:'Lecture seule (L)'}]},
+    {k:'lib', label:'Profil dédié : libellé', value:d.toUpperCase()}
+  ], v=>{
+    if(!v.prof && !v.lib) return 'Donnez un libellé au nouveau profil.';
+    let code = v.prof;
+    const has = {}; r.fns.forEach(x=>{ if(x.a) has[x.f.row+'|'+x.a] = 1; });
+    const items = [];
+    ordered().forEach(f=>{ const cur = cellOf(f,a);
+      items.push({cat:f.groupe||'', label:f.nom, value:f.row+'|'+a, sub:has[f.row+'|'+a] ? 'a déjà ce dossier' : cur ? 'profil actuel : '+cur : '', used:!!has[f.row+'|'+a]}); });
+    openPicker({title:'Donner « '+d+' » à…', keepOpen:true, items:items, placeholder:'Fonction ou famille…',
+      onPick:(val,it)=>{
+        const i = val.indexOf('|'), f = foncByRow(val.slice(0,i)); if(!f) return;
+        if(!code){          /* profil dédié : créé avec la première fonction choisie */
+          edit('profil de partage créé pour « '+d+' » et donné à '+f.nom, ()=>{
+            code = nextCode('', DICO.partages.map(p=>p.code));
+            const np = {code:code, libelle:v.lib, dossiers:[d]}; pSetDroit(np, d, v.droit);
+            DICO.partages.push(np); attachCode(f,a,code); });
+        }else edit('« '+d+' » (profil '+code+') donné à '+f.nom, ()=>{ attachCode(f,a,code); });
+        if(it){ it.used = true; it.sub = 'ajouté (profil '+code+')'; }
+      }});
+  }, true);
+}
 function resAdd(r){
   const ad = r.add; if(!ad) return;
+  if(ad.dossier!=null){ resAddDossier(r); return; }
   if(isLocked()){ lockedMsg(); return; }
   const has = {}; r.fns.forEach(x=>{ if(x.a) has[x.f.row+'|'+x.a] = 1; });
   const items = [];
