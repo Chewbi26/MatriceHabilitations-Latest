@@ -1236,7 +1236,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.2.6';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.2.7';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -2408,7 +2408,8 @@ function editorHTML(f,a,inline){
   let h = '<div class="vedit">';
   if(items && isMulti(a)){
     const codes = splitCodes(v).filter(x=>!isQ(x) && !isX(x));
-    h += '<span class="chips tight">'+codes.map(c=>'<span class="p co rm">'+esc(c)+
+    const lbl = c => { const i = items.find(x=>x.value===c); return !i ? c : a===COL_PART || !i.sub ? i.label : i.label+' — '+i.sub; };
+    h += '<span class="chips tight">'+codes.map(c=>'<span class="p co rm">'+esc(lbl(c))+
          '<i data-fa="rm" data-c="'+esc(c)+'" title="Retirer">×</i></span>').join('')+'</span>'+
          '<button class="btn sm" data-fa="add">+ '+esc(kindOf(a))+'</button>'+
          (COL_M.indexOf(a)>=0 ? st('X','Oui, sans profil',isX(v)) : '')+
@@ -2487,8 +2488,8 @@ function partView(v){
   return codes.map(c=>{
     const p = PART[c];
     if(!p) return '<div class="det"><span class="b dg">'+esc(c)+'</span> aucun profil de ce nom dans la table des partages réseau</div>';
-    const head = codes.length>1 ? '<div class="sub-t"><span class="b pr">'+esc(c)+'</span> '+esc(p.libelle||'')+
-                                  ' · '+plural(p.dossiers.length,'dossier')+'</div>' : '';
+    const head = '<div class="sub-t"><span class="b pr plink" data-dico="part" data-dk="'+esc(c)+'">'+esc(c)+' — '+esc(p.libelle||'')+
+                 '</span> · '+plural(p.dossiers.length,'dossier')+'</div>';
     return head+(p.dossiers.length ? tagList(p.dossiers, c, d=>foldLbl(p,d)) : '<span class="b q">aucun dossier listé</span>');
   }).join('');
 }
@@ -2594,8 +2595,12 @@ function itemHTML(f,a,lay){
     return '<div class="row'+(full?' full':'')+'"'+da+'><div class="k">'+esc(a)+'</div><div class="v">'+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
   }
   /* la colonne principale d'une section (partages, messagerie, ELAP Planning) se passe de libellé */
-  if(v && (a===COL_PART || a===COL_MAIL || a===COL_PLAN))
-    return '<div class="row solo"'+da+'><div class="v">'+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
+  if(v && (a===COL_PART || a===COL_MAIL || a===COL_PLAN)){
+    const p = a===COL_PLAN && !isQ(v) && FTAB!=='vides' ? elapOf(f) : null;       /* profil ELAP Planning : annoncé comme les autres */
+    const head = p ? '<div class="sub-t"><span class="b pr plink" data-elap="'+esc(p.id)+'" title="Ouvrir le profil dans ELAP › Profils">'+esc(p.id)+' — '+esc(p.nom)+'</span> · '+
+                     plural(RIGHTS.filter(r=>p.droits[r]).length,'droit')+'</div>' : '';
+    return '<div class="row solo"'+da+'><div class="v">'+head+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
+  }
   return '<div class="row"'+da+'><div class="k">'+esc(a)+'</div><div class="v">'+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
 }
 
@@ -2606,17 +2611,8 @@ function secCard(f,s,w){
   const shown = s[1].filter(a=>EDIT_ALL || EDITING===a || (FTAB==='vides' ? !cellOf(f,a) : !!cellOf(f,a)));
   if(!shown.length) return null;
   const lay = all ? 'rows' : ui.lay;
-  /* en-tête : code du partage ou du profil ELAP Planning, et un résumé à droite */
+  /* en-tête : titre seul ; les profils (partage, ELAP Planning) sont annoncés dans le corps de la carte */
   let extra = '', meta = '';
-  if(!all && COL_PART && s[1].indexOf(COL_PART)>=0){
-    const cs = splitCodes(cellOf(f,COL_PART)).filter(c=>!isQ(c) && !isX(c));
-    extra = cs.map(c=>'<span class="b pr plink" data-dico="part" data-dk="'+esc(c)+'">'+esc(c)+(PART[c]?' — '+esc(PART[c].libelle||''):'')+'</span>').join('');
-    if(cs.length===1 && PART[cs[0]]) meta = plural(PART[cs[0]].dossiers.length,'dossier');
-  }
-  if(!all && COL_PLAN && s[1].indexOf(COL_PLAN)>=0 && cellOf(f,COL_PLAN) && !isQ(cellOf(f,COL_PLAN))){
-    const p = elapOf(f);
-    if(p){ extra = '<span class="b pr">'+esc(p.id)+' — '+esc(p.nom)+'</span>'; meta = plural(RIGHTS.filter(r=>p.droits[r]).length,'droit'); }
-  }
   let body = shown.map(a=>itemHTML(f,a,lay)).join('');
   if(lay==='chk') body = '<div class="ckgrid'+(UC.checks!=='coches'?' '+UC.checks:'')+'">'+body+'</div>';
   if(lay==='grid') body = '<div class="dgrid">'+body+'</div>';
@@ -2744,9 +2740,11 @@ function renderFiche(){
 
 /* actions de la fiche : dans l'en-tête de page (#fhead) et dans les cartes (#fiche) */
 function ficheClick(e){
+  const pe = e.target.closest('.plink[data-elap]');
+  if(pe){ goItem({t:'e', k:pe.dataset.elap}); return; }
   const pl = e.target.closest('.plink[data-dico]');
   if(pl){ goTab('dico'); DTAB=pl.dataset.dico; renderDico();
-    setTimeout(()=>{ const el=document.querySelector('td .cs[data-k="'+pl.dataset.dk+'"]');
+    setTimeout(()=>{ const el=document.querySelector('td .cell[data-k="'+pl.dataset.dk+'"]');
       if(el){ el.scrollIntoView({block:'center'}); el.closest('tr').style.background='var(--acc-bg)'; setTimeout(()=>el.closest('tr').style.background='',2000); } },80);
     return; }
   const b = e.target.closest('[data-fa]'); if(!b) return;
