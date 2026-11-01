@@ -1119,7 +1119,7 @@ body.lecture [data-da="st"]{pointer-events:none}
       <button class="btn" id="matFill" title="Une application, toutes les fonctions en liste : saisie rapide avec les valeurs du dictionnaire"><i data-ic="pencil"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5 -10.5a2.83 2.83 0 1 0 -4 -4l-10.5 10.5v4"></path><path d="M13.5 6.5l4 4"></path></svg></i> Remplir une colonne…</button>
       <button class="btn" id="matFind" title="Remplacer une valeur ou un code par un autre, partout ou dans une application"><i data-ic="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"></path><path d="M21 21l-6 -6"></path></svg></i> Rechercher / remplacer…</button>
       <button class="btn" id="matPaste" title="Reprendre un tableau Excel (fonctions en lignes, applications en colonnes), rapproché par les noms"><i data-ic="file-spreadsheet"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"></path><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"></path><path d="M8 11h8v7h-8z"></path><path d="M8 15h8"></path><path d="M11 11v7"></path></svg></i> Coller depuis Excel…</button>
-      <button class="btn" id="matImg" title="Exporter la matrice affichée en image (PNG), découpée selon la taille maximale choisie"><i data-ic="photo"></i> Image</button>
+      <button class="btn" id="matImg" title="Exporter en image (PNG) la matrice affichée et les profils des applications, avec droits, découpés selon la taille maximale choisie"><i data-ic="photo"></i> Exporter</button>
       <button class="btn pr" id="addFonc2"><i data-ic="plus"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></i> Nouvelle fonction</button>
     </div>
   </div>
@@ -1236,7 +1236,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.2.0';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.2.2';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -1783,9 +1783,10 @@ const DCOLS = {
   part:{def:[{k:'libelle', nom:'Libellé'}, {k:'dossiers', nom:'Dossiers autorisés'}], num:'Code', rows:()=>DICO.partages, quoi:'profil'},
   mailp:{def:[{k:'libelle', nom:'Libellé'}, {k:'boites', nom:'Boîtes'}], num:'N°', rows:()=>DICO.mailp, quoi:'profil'},
   mail:{def:[{k:'adresse', nom:'Adresse'}, {k:'nominative', nom:'Nominative'}], num:'Code', rows:()=>DICO.mail, quoi:'boîte'},
-  dpi: {def:[{k:'nom', nom:'Nom du profil'}, {k:'note', nom:'Statut'}], num:'N°', rows:()=>DICO.dpi, quoi:'profil'}
+  dpi: {def:[{k:'nom', nom:'Nom du profil'}], num:'N°', rows:()=>DICO.dpi, quoi:'profil'}
 };
-function dCols(k,tout){ const c = dcfg(k).cols || DCOLS[k].def; return tout ? c : c.filter(x=>!x.off); }
+/* profils ELAP : l'ancienne colonne « Statut » (note) n'existe plus, même si un fichier de données la porte encore dans ses colonnes */
+function dCols(k,tout){ let c = dcfg(k).cols || DCOLS[k].def; if(k==='dpi') c = c.filter(x=>x.k!=='note'); return tout ? c : c.filter(x=>!x.off); }
 const dNumNom = k => dcfg(k).numNom || DCOLS[k].num;
 /* valeur lisible d'une colonne (UF et agendas : listes ou texte) */
 const easVal = (e,k) => k==='uf' ? ufText(e) : k==='agenda' ? agText(e) : String(e[k]==null ? '' : e[k]);
@@ -2945,20 +2946,17 @@ function newEasily(tg){
     if(easLists()) setTimeout(()=>easPicker(v.num,'uf'), 0);
   }, true);
 }
-const ABS = '(Profil abs)';
-const isAbs = d => /abs/i.test(d.note||'');
 function newDpi(tg){
   const f = tgF(tg);
   form('Nouveau profil ELAP'+lblFor(tg), [
     {k:'code', label:'N°', value:nextCode('', DICO.dpi.map(d=>d.code))},
-    {k:'nom',  label:'Nom du profil dans ELAP', value:f ? '_PROFIL_'+canon(f.nom) : '_PROFIL_'},
-    {k:'ok',   label:'Ce profil existe déjà dans le logiciel ELAP', type:'check', value:false}
+    {k:'nom',  label:'Nom du profil dans ELAP', value:f ? '_PROFIL_'+canon(f.nom) : '_PROFIL_'}
   ], v=>{
     if(!v.code || !/^\d+$/.test(v.code)) return 'Le numéro doit être un nombre (ex. 17).';
     if(DPIS[v.code]) return 'Le n° '+v.code+' est déjà porté par '+DPIS[v.code][0].nom+'.';
     if(!v.nom) return 'Le nom est obligatoire.';
     edit('création du profil ELAP '+v.code+lblFor(tg),()=>{
-      DICO.dpi.push({code:v.code, nom:v.nom, note:v.ok ? '' : ABS});
+      DICO.dpi.push({code:v.code, nom:v.nom});
       const g = tgF(tg); if(g) attachCode(g,tg.a,v.code);
     });
   });
@@ -2967,13 +2965,12 @@ function newDpi(tg){
 function codeDpi(i, tg){
   const d = DICO.dpi[i]; if(!d) return;
   form('Code du profil '+d.nom, [
-    {k:'code', label:'N°', value:nextCode('', DICO.dpi.map(x=>x.code))},
-    {k:'ok',   label:'Ce profil existe déjà dans le logiciel ELAP', type:'check', value:!isAbs(d)}
+    {k:'code', label:'N°', value:nextCode('', DICO.dpi.map(x=>x.code))}
   ], v=>{
     if(!/^\d+$/.test(v.code)) return 'Le numéro doit être un nombre (ex. 17).';
     if(DPIS[v.code]) return 'Le n° '+v.code+' est déjà porté par '+DPIS[v.code][0].nom+'.';
     edit('code '+v.code+' pour '+d.nom+lblFor(tg),()=>{
-      const x = DICO.dpi[i]; x.code = v.code; x.note = v.ok ? '' : ABS;
+      const x = DICO.dpi[i]; x.code = v.code;
       const g = tgF(tg); if(g) attachCode(g,tg.a,v.code);
     });
   });
@@ -4357,8 +4354,6 @@ function renderDico(){
           if(d.code && d.code!=='?' && splitCodes(cellOf(f,a)).indexOf(d.code)>=0 && fns.indexOf(f)<0) fns.push(f); }));
         return '<tr><td>'+cellSpan('dpi',String(i),'code',d.code)+'</td>'+
           dCols('dpi').map(c=>c.k==='nom' ? '<td class="mono">'+cellSpan('dpi',String(i),'nom',d.nom)+'</td>'
-            : c.k==='note' ? '<td><span class="p '+(isAbs(d)?'q':'ok')+'" data-da="st" data-k="'+i+'" style="cursor:pointer" '+
-                'title="Cliquez pour basculer">'+(isAbs(d)?'à créer dans ELAP':'créé dans ELAP')+'</span></td>'
             : libre('dpi',String(i),d,c.k)).join('')+
           fnsChips(fns, '<span class="p no">—</span>')+
           '<td class="act"><button class="btn sm dg" data-da="del" data-k="'+i+'">×</button></td></tr>';
@@ -4444,7 +4439,7 @@ function dicoSet(kind,key,fld,v){
           const i = c.indexOf(old); if(i>=0){ c[i]=v; f.cells[a]=c.join(','); }
         }));
       }
-      d[fld] = v;                               /* le statut se bascule à part (colonne Statut) */
+      d[fld] = v;
     }
   });
   renderDico();                                 /* si la saisie a été refusée, efface le champ ouvert */
@@ -4459,8 +4454,6 @@ $('dico').addEventListener('click',e=>{
     if(b.dataset.da==='del') dicoDel(k);
     if(b.dataset.da==='doss') dossPicker(k);
     if(b.dataset.da==='boites') boxPicker(k);
-    if(b.dataset.da==='st') edit('statut du profil ELAP '+k,()=>{ const d = DICO.dpi[+k]; if(!d) return false;
-      d.note = isAbs(d) ? '' : ABS; });
     return;
   }
   const c = e.target.closest('.cell');
@@ -4813,11 +4806,9 @@ function checks(){
   add('todo','fvide','Profils de partage sans aucun dossier',
     'Le profil est référencé mais on ne sait pas à quoi il donne accès.',it);
 
-  it = DICO.dpi.filter(d=>!d.code || d.code==='?' || isAbs(d)).map(d=>goD('dpi',d.nom,
-    [!d.code || d.code==='?' ? 'pas encore de code' : 'code '+d.code, isAbs(d) ? 'à créer dans ELAP' : ''].filter(Boolean).join(' · ')));
-  add('todo','mabs','Profils ELAP à créer ou sans numéro',
-    'Profil prévu mais pas encore créé dans le logiciel ELAP, ou sans numéro utilisable dans la matrice. '+
-    'Quand il est créé, cliquez sur son statut dans Dictionnaires › Profils ELAP.',it);
+  it = DICO.dpi.filter(d=>!d.code || d.code==='?').map(d=>goD('dpi',d.nom,'pas encore de code'));
+  add('todo','mabs','Profils ELAP sans numéro',
+    'Profil prévu mais sans numéro utilisable dans la matrice : donnez-lui son numéro dans Dictionnaires › Profils ELAP.',it);
 
   /* ---------------- ménage possible ---------------- */
   it = DICO.partages.filter(p=>!suggested['part|'+p.code] &&
@@ -5002,7 +4993,7 @@ function renderHome(){
                ['Profils ELAP Planning', DATA.profils.length, 'sur '+plural(ALL.length,'service'), 'calendar-time', 'elap'],
                /* partages masqués dans ce portail (Dictionnaires › Noms et liens) : les profils ELAP à la place */
                dOff('doss') && dOff('part')
-                 ? [dName('dpi'), DICO.dpi.length, plural(DICO.dpi.filter(isAbs).length,'profil')+' à créer dans ELAP', 'id', 'dico:dpi']
+                 ? [dName('dpi'), DICO.dpi.length, plural(DICO.dpi.filter(d=>!d.code || d.code==='?').length,'profil')+' sans numéro', 'id', 'dico:dpi']
                  : [dName('doss'), DICO.dossiers.length, plural(DICO.partages.length,'profil')+' de partage', 'folders', 'dico:doss']];
     const one = k => UC.kpi==='gauche'
       ? '<span class="av lg">'+ic(k[3])+'</span><div><div class="n">'+k[1]+'</div><div class="l">'+k[0]+'</div><div class="s">'+esc(k[2])+'</div></div>'
@@ -7152,10 +7143,9 @@ const DIMP = {
              if(p.dossiers.indexOf(d)<0) p.dossiers.push(d);
              if(r) pSetDroit(p, d, r); });
            p.dossiers.sort((a,b)=>a.localeCompare(b,'fr')); } },
-  dpi:{ key:()=>dNumNom('dpi'), fields:()=>dCols('dpi',true).map(c=>({k:c.k, nom:c.nom+(c.k==='note' ? ' (« à créer » ou vide)' : '')})),
-        ensure:c=>{ if(DICO.dpi.some(d=>d.code===c)) return false; DICO.dpi.push({code:c, nom:'', note:''}); return true; },
-        /* statut : « à créer », « abs »… = profil prévu, pas encore créé dans ELAP (isAbs) ; sinon créé */
-        set:(c,k,v)=>{ const d = DICO.dpi.find(x=>x.code===c); d[k] = k==='note' ? (/abs|cr[ée]er|pr[ée]vu/i.test(v) ? ABS : '') : v; } },
+  dpi:{ key:()=>dNumNom('dpi'), fields:()=>dCols('dpi',true).map(c=>({k:c.k, nom:c.nom})),
+        ensure:c=>{ if(DICO.dpi.some(d=>d.code===c)) return false; DICO.dpi.push({code:c, nom:''}); return true; },
+        set:(c,k,v)=>{ const d = DICO.dpi.find(x=>x.code===c); d[k] = v; } },
   ag:{ key:()=>nmNomNom('ag'), fields:()=>nmCols('ag',true).map(c=>({k:c.k, nom:c.nom})), set:(n,k,v)=>nmSetInfo('ag',n,k,v),
        ensure:n=>{ easInitLists(); if(DICO.agendas.indexOf(n)>=0) return false; DICO.agendas.push(n); easSort(DICO.agendas); return true; } },
   doss:{ key:()=>'Dossier', fields:()=>[],
@@ -8240,41 +8230,46 @@ async function applyUpdate(app, html){
   if(updDue()) fetchLatest().then(parseApp).then(a=>updNote(a.version), e=>updNote(null, updErr(e))); }
 
 /* ============================================================================
-   17 ter. EXPORT DE LA MATRICE EN IMAGE (PNG)
-   Dessine la matrice affichée (fonctions de MVIS, applications de MAPPS : filtres de la page) dans un canvas,
-   sans bibliothèque. Largeur et hauteur maximales d'une image réglables : si la matrice est plus grande, elle est
-   découpée en plusieurs images ; chaque image répète les en-têtes de colonnes et la colonne des fonctions (ainsi
-   que le titre de la famille, « suite »). Les images multiples sont livrées dans un ZIP. Les noms des applications
-   s'écrivent à la verticale ou penchés à 45° (réglage) ; la largeur de chaque colonne s'adapte à son contenu.
+   17 ter. EXPORT EN IMAGE (PNG) : MATRICE ET PROFILS DES APPLICATIONS
+   Bouton « Exporter » de la page Matrice. Une fenêtre à onglets : la matrice affichée (fonctions de MVIS,
+   applications de MAPPS : filtres de la page) et les dictionnaires de profils (partages, messagerie, profils
+   numérotés du dossier patient, profils ELAP, ELAP Planning) avec leurs codes, noms et droits. Tout est dessiné
+   dans un canvas, sans bibliothèque. Largeur et hauteur maximales d'une image, taille du texte et inclinaison des
+   noms d'applications (en degrés, 90 = vertical) sont réglables ; au-delà de la taille maximale, le contenu est
+   découpé en plusieurs images qui répètent les en-têtes. Une image seule : PNG ; plusieurs, ou « Tout exporter » :
+   ZIP (un dossier par onglet).
    ========================================================================== */
 const IMG_KEY = 'mh-img';
 function imgParams(){
-  const d = {w:1800, h:1200, fs:13, head:UC.matHead==='incline' ? 'incline' : 'vertical'};
-  try{ Object.assign(d, JSON.parse(localStorage.getItem(IMG_KEY)||'{}')); }catch(e){}
+  const d = {w:1800, h:1200, fs:13, ang:UC.matHead==='incline' ? 45 : 90};
+  try{ const s = JSON.parse(localStorage.getItem(IMG_KEY)||'{}');
+       if(s.head && !('ang' in s)) s.ang = s.head==='incline' ? 45 : 90;        /* ancien réglage */
+       Object.assign(d, s); }catch(e){}
   const n = (v,a,b,x) => Math.min(b, Math.max(a, Math.round(+v)||x));
-  return {w:n(d.w,400,6000,1800), h:n(d.h,300,6000,1200), fs:n(d.fs,9,24,13), head:d.head==='incline' ? 'incline' : 'vertical'};
+  return {w:n(d.w,400,6000,1800), h:n(d.h,300,6000,1200), fs:n(d.fs,9,24,13), ang:n(d.ang,20,90,45)};
 }
+const IMG = {INK:'#1f2328', MUT:'#6b7280', LINE:'#d1d5db', HEAD:'#f3f4f6', GRP:'#e5e7eb', OK:'#15803d', CHIP:'#eef2f7'};
 function imgLayout(p){
   const cv = document.createElement('canvas'), x = cv.getContext('2d');
   const fam = getComputedStyle(document.body).fontFamily || 'sans-serif', fs = p.fs;
   const f = fs+'px '+fam, fb = '600 '+fs+'px '+fam;
-  const rowH = Math.round(fs*1.9), pad = 14, cp = 12, lh = fs*1.3, S45 = Math.SQRT1_2;
+  const rowH = Math.round(fs*1.9), pad = 14, cp = 12, lh = fs*1.3;
+  const th = p.ang*Math.PI/180, SIN = Math.sin(th), COS = Math.cos(th);
   const tw = (s,font)=>{ x.font = font || f; return x.measureText(s).width; };
   const clip = (s,max,font)=>{ if(tw(s,font)<=max) return s; while(s.length>1 && tw(s+'…',font)>max) s = s.slice(0,-1); return s+'…'; };
   const cols = MAPPS.slice(), fn = MVIS.slice();
   const txt = v => isX(v) || isQ(v) ? '' : (v.length>22 ? v.slice(0,21)+'…' : v);
   const lbl = cols.map(a=>clip(a, 300, fb)), lblW = lbl.map(s=>tw(s,fb));
   const cw = cols.map((a,i)=>{ let m = 0; fn.forEach(r=>{ const v = cellOf(r,a); if(v) m = Math.max(m, tw(txt(v), fb)); });
-    return Math.ceil(Math.max(fs*2.2, m ? m+cp*2 : 0, p.head==='incline' ? fs*1.9 : fs*1.6)); });
+    return Math.ceil(Math.max(fs*2.2, m ? m+cp*2 : 0, lh/SIN + 6)); });
   const names = fn.map(r=>clip(r.nom, 380, f));
   const groups = UC.matGroup;
   const rowLabelW = Math.ceil(Math.max(tw('Fonction',fb), ...names.map(s=>tw(s)), 40) + cp*2);
   const maxL = Math.max(0, ...lblW);
-  const hdrH = Math.ceil(cols.length ? (p.head==='incline' ? maxL*S45 + lh*S45 + 12 : maxL + 14) : lh*2);
-  const fh = 0;                                   /* pas de pied d'image : les images s'intègrent à une procédure */
+  const hdrH = Math.ceil(cols.length ? maxL*SIN + lh*COS + 12 : lh*2);
   // colonnes : découpage en gardant la colonne des fonctions
-  const ext = idx => { const tot = idx.reduce((s,i)=>s+cw[i],0); let r = tot;
-    if(p.head==='incline'){ let pos = 0; idx.forEach(i=>{ r = Math.max(r, pos + cw[i]/2 + lblW[i]*S45 + lh*S45/2); pos += cw[i]; }); }
+  const ext = idx => { const tot = idx.reduce((s,i)=>s+cw[i],0); let r = tot, pos = 0;
+    idx.forEach(i=>{ r = Math.max(r, pos + cw[i]/2 + lblW[i]*COS + lh*SIN/2); pos += cw[i]; });
     return rowLabelW + r; };
   const ct = []; let cur = [];
   cols.forEach((a,i)=>{ if(cur.length && ext(cur.concat(i)) > p.w - pad*2){ ct.push(cur); cur = []; } cur.push(i); });
@@ -8282,8 +8277,8 @@ function imgLayout(p){
   // lignes : découpage, titre de famille jamais seul en bas, rappelé en début d'image (suite)
   const items = []; let g = null;
   fn.forEach((r,k)=>{ if(groups && r.groupe!==g){ g = r.groupe; items.push({g:g||'Sans famille'}); } items.push({r:r, k:k}); });
-  const availH = p.h - pad*2 - hdrH - fh, rt = [];
-  let rc = [], used = 0, gname = '';
+  const availH = p.h - pad*2 - hdrH, rt = [];
+  let rc = [], used = 0;
   const gOf = it => it.r ? (it.r.groupe || 'Sans famille') : it.g;
   items.forEach(it=>{
     if(rc.length && used + rowH > availH){
@@ -8295,16 +8290,14 @@ function imgLayout(p){
   if(rc.length || !rt.length) rt.push(rc);
   const tiles = [];
   rt.forEach((rows,ri)=>ct.forEach((idx,ci)=>tiles.push({ri:ri, ci:ci, rows:rows, idx:idx,
-    w:Math.ceil(ext(idx)+pad*2), h:hdrH + rows.length*rowH + pad*2 + fh})));
-  return {p:p, fam:fam, f:f, fb:fb, fs:fs, rowH:rowH, pad:pad, cp:cp, lh:lh, cols:cols, lbl:lbl, cw:cw, names:names, rowLabelW:rowLabelW,
-          hdrH:hdrH, fh:fh, tiles:tiles, nr:rt.length, nc:ct.length, nf:fn.length, tw:tw, clip:clip, txt:txt, fn:fn};
+    w:Math.ceil(ext(idx)+pad*2), h:hdrH + rows.length*rowH + pad*2})));
+  return {kind:'mat', p:p, fam:fam, f:f, fb:fb, fs:fs, rowH:rowH, pad:pad, cp:cp, lh:lh, th:th, cols:cols, lbl:lbl, cw:cw, names:names,
+          rowLabelW:rowLabelW, hdrH:hdrH, tiles:tiles, nr:rt.length, nc:ct.length, nf:fn.length, clip:clip, txt:txt, fn:fn};
 }
 function imgDraw(L, n, cv){
-  const t = L.tiles[n], p = L.p, fs = L.fs, pad = L.pad, S45 = Math.SQRT1_2;
+  const t = L.tiles[n], fs = L.fs, pad = L.pad;
   cv.width = t.w; cv.height = t.h;
-  const x = cv.getContext('2d');
-  const css = getComputedStyle(document.documentElement);
-  const INK = '#1f2328', MUT = '#6b7280', LINE = '#d1d5db', HEAD = '#f3f4f6', GRP = '#e5e7eb', OK = '#15803d';
+  const x = cv.getContext('2d'), {INK, LINE, HEAD, GRP, OK} = IMG;
   x.fillStyle = '#fff'; x.fillRect(0,0,t.w,t.h);
   x.textBaseline = 'middle';
   const tableW = L.rowLabelW + t.idx.reduce((s,i)=>s+L.cw[i],0);
@@ -8318,8 +8311,7 @@ function imgDraw(L, n, cv){
     const cw = L.cw[i], col = appCol(L.cols[i]);
     if(col){ x.fillStyle = col; x.fillRect(px, oy, cw, 3); }
     x.save(); x.fillStyle = INK; x.font = L.fb; x.textAlign = 'left';
-    if(p.head==='incline'){ x.translate(px + cw/2, oy + L.hdrH - 5); x.rotate(-Math.PI/4); x.fillText(L.lbl[i], 0, 0); }
-    else { x.translate(px + cw/2, oy + L.hdrH - 7); x.rotate(-Math.PI/2); x.fillText(L.lbl[i], 0, 0); }
+    x.translate(px + cw/2, oy + L.hdrH - 6); x.rotate(-L.th); x.fillText(L.lbl[i], 0, 0);
     x.restore(); px += cw; });
   // lignes
   const gridV = UC.matGrid!=='aucune' && UC.matGrid!=='lignes';
@@ -8355,58 +8347,199 @@ function imgDraw(L, n, cv){
       if(k<t.idx.length) gx += L.cw[t.idx[k]]; } }
   x.stroke();
 }
+
+/* ---- profils des applications : tableaux (code, nom, informations, droits) ----
+   Une cellule est un texte {t, b, c} ou une liste de pastilles {chips:[{t, tag, k}], none} ; k donne la couleur
+   du droit (ct : contrôle total, l : lecture, le : lecture + écriture). Les colonnes suivent les réglages des
+   dictionnaires (Colonnes…, noms et masquage). */
+const IMG_TAG = {ct:'#b42318', l:'#1d4ed8', le:'#b45309'};
+function imgTables(){
+  const T = [], cellT = (o,k) => ({t:o[k]==null ? '' : String(o[k])});
+  const ok = k => !dOff(k);
+  if(ok('part') && DICO.partages.length){ const cols = dCols('part');
+    T.push({id:'partages', label:dName('part'), head:[dNumNom('part')].concat(cols.map(c=>c.nom)),
+      rows:DICO.partages.map(p=>[{t:p.code, b:1}].concat(cols.map(c=>c.k==='dossiers'
+        ? {chips:p.dossiers.map(d=>{ const r = pDroit(p,d); return r ? {t:d, tag:PDROIT[r], k:r} : {t:d}; }), none:'aucun dossier'}
+        : cellT(p,c.k))))}); }
+  if(ok('mailp') && (DICO.mailp||[]).length){ const cols = dCols('mailp');
+    T.push({id:'messagerie', label:dName('mailp'), head:[dNumNom('mailp')].concat(cols.map(c=>c.nom)),
+      rows:DICO.mailp.map(p=>[{t:p.code, b:1}].concat(cols.map(c=>c.k==='boites'
+        ? {chips:(p.boites||[]).map(b=>({t:boxTxt(b)})), none:'aucune boîte'} : cellT(p,c.k))))}); }
+  if(ok('eas') && dpiOn() && DICO.easily.length){ const cols = easCols();
+    T.push({id:'profils-dossier-patient', label:dName('eas'), head:[easNumNom()].concat(cols.map(c=>c.nom)),
+      rows:DICO.easily.map(e=>[{t:e.num, b:1}].concat(cols.map(c=>{
+        if(c.k==='uf'){ const u = ufOf(e);
+          return u.mode==='texte' ? {t:e.uf||''} : u.mode==='tout' ? {chips:[{t:'Toutes les UF'}]} : u.mode==='service' ? {chips:[{t:'Selon le service'}]}
+               : {chips:u.list.map(x=>({t:ufLabel(x)})), none:'aucune'}; }
+        if(c.k==='agenda'){ const g = agOf(e);
+          return g.mode==='texte' ? {t:e.agenda==='?' ? 'à confirmer' : (e.agenda||'')} : g.mode==='tout' ? {chips:[{t:'Tous les agendas'}]}
+               : g.mode==='q' ? {t:'à confirmer'}
+               : {chips:g.list.map(x=>x.d ? {t:nmLabel('ag',x.nom), tag:AGDROIT[x.d], k:x.d} : {t:nmLabel('ag',x.nom)}), none:'aucun'}; }
+        return cellT(e,c.k); })))}); }
+  if(ok('dpi') && DICO.dpi.length){ const cols = dCols('dpi');
+    T.push({id:'profils-elap', label:dName('dpi'), head:[dNumNom('dpi')].concat(cols.map(c=>c.nom)),
+      rows:DICO.dpi.map(d=>[{t:d.code, b:1}].concat(cols.map(c=>cellT(d,c.k))))}); }
+  if(DATA.profils.length){
+    T.push({id:'elap-planning', label:'ELAP Planning', head:['Profil'].concat(RIGHTS),
+      rows:DATA.profils.map(p=>[{t:p.nom, b:1}].concat(RIGHTS.map(r=>{ const d = p.droits && p.droits[r];
+        return d && d.parts && d.parts.length ? {chips:d.parts.map(s=>({t:s}))} : {t:''}; })))}); }
+  return T;
+}
+function tblLayout(spec, p){
+  const cv = document.createElement('canvas'), x = cv.getContext('2d');
+  const fam = getComputedStyle(document.body).fontFamily || 'sans-serif', fs = p.fs;
+  const f = fs+'px '+fam, fb = '600 '+fs+'px '+fam, fc = (fs-1)+'px '+fam, fcb = '600 '+(fs-1)+'px '+fam;
+  const pad = 14, cp = 10, vp = 6, lh = Math.round(fs*1.4), chipH = Math.round(fs*1.7), gap = 4, cpd = 7;
+  const tw = (s,font)=>{ x.font = font || f; return x.measureText(s).width; };
+  const clip = (s,max,font)=>{ if(tw(s,font)<=max) return s; while(s.length>1 && tw(s+'…',font)>max) s = s.slice(0,-1); return s+'…'; };
+  const chipW = c => tw(c.t, fc) + cpd*2 + (c.tag ? 6 + tw(c.tag, fcb) : 0);
+  const nc = spec.head.length;
+  const wrap = (s,max,font)=>{ const out = []; String(s).split('\n').forEach(par=>{ let line = '';
+      par.split(' ').forEach(w=>{ const t = line ? line+' '+w : w;
+        if(!line || tw(t,font) <= max) line = t; else { out.push(line); line = w; } });
+      out.push(line); });
+    return out.map(l=>clip(l,max,font)); };
+  const flow = (chips,max)=>{ const pos = []; let xx = 0, line = 0;
+    chips.forEach(c=>{ const w = Math.min(chipW(c), max); if(xx && xx + w > max){ xx = 0; line++; } pos.push({c:c, x:xx, line:line, w:w}); xx += w + gap; });
+    return {pos:pos, lines:chips.length ? line+1 : 1}; };
+  // largeurs : naturelle (une ligne) et minimale (mot ou pastille la plus large)
+  const nat = [], min = [];
+  for(let j=0;j<nc;j++){
+    let n = tw(spec.head[j], fb), m = n;
+    spec.rows.forEach(r=>{ const c = r[j];
+      if(c.chips){ const ws = c.chips.map(chipW);
+        n = Math.max(n, ws.length ? ws.reduce((s,w)=>s+w,0)+gap*(ws.length-1) : tw(c.none||'', f)); m = Math.max(m, Math.min(Math.max(...ws, 0), fs*22)); }
+      else { const w = tw(c.t, c.b ? fb : f); n = Math.max(n, w); m = Math.max(m, Math.min(w, Math.max(...String(c.t).split(/\s+/).map(s=>tw(s)), 0) + 4)); } });
+    nat.push(Math.ceil(n + cp*2)); min.push(Math.ceil(m + cp*2)); }
+  const avail = p.w - pad*2;
+  const mt = min.reduce((s,w)=>s+w,0);
+  if(mt > avail) min.forEach((m,j)=>{ min[j] = Math.max(Math.floor(m*avail/mt), cp*2+20); });     /* trop de colonnes larges : les pastilles sont tronquées */
+  let cw = nat.slice(), tot = cw.reduce((s,w)=>s+w,0);
+  if(tot > avail){ const wt = nat.map((n,j)=>Math.max(0, n - min[j])), sw = wt.reduce((s,w)=>s+w,0), ex = tot - avail;
+    const k = sw ? Math.min(1, ex/sw) : 0; cw = nat.map((n,j)=>Math.floor(n - wt[j]*k)); tot = cw.reduce((s,w)=>s+w,0); }
+  // hauteurs de lignes
+  const cells = spec.rows.map(r=>r.map((c,j)=>{ const w = cw[j] - cp*2;
+    if(c.chips){ if(!c.chips.length) return {h:lh, none:true}; const fl = flow(c.chips, w); return {fl:fl, h:fl.lines*chipH + (fl.lines-1)*gap}; }
+    const ls = wrap(c.t, w, c.b ? fb : f); return {ls:ls, h:Math.max(1,ls.length)*lh}; }));
+  const rowHs = cells.map(r=>Math.max(...r.map(c=>c.h)) + vp*2);
+  const hdrH = lh + vp*2 + 2, availH = p.h - pad*2 - hdrH;
+  const rt = []; let cur = [], used = 0;
+  rowHs.forEach((h,i)=>{ if(cur.length && used + h > availH){ rt.push(cur); cur = []; used = 0; } cur.push(i); used += h; });
+  if(cur.length || !rt.length) rt.push(cur);
+  const tiles = rt.map((rows,ri)=>({ri:ri, ci:0, rows:rows, w:tot + pad*2, h:hdrH + rows.reduce((s,i)=>s+rowHs[i],0) + pad*2}));
+  return {kind:'tbl', spec:spec, p:p, fam:fam, f:f, fb:fb, fc:fc, fcb:fcb, pad:pad, cp:cp, vp:vp, lh:lh, chipH:chipH, cpd:cpd, cw:cw, cells:cells, rowHs:rowHs,
+          hdrH:hdrH, tiles:tiles, nr:rt.length, nc:1, nf:spec.rows.length, clip:clip, tw:tw};
+}
+function tblDraw(L, n, cv){
+  const t = L.tiles[n], pad = L.pad, {INK, MUT, LINE, HEAD, CHIP} = IMG;
+  cv.width = t.w; cv.height = t.h;
+  const x = cv.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0,0,t.w,t.h); x.textBaseline = 'middle';
+  const tableW = t.w - pad*2, ox = pad, oy = pad;
+  x.fillStyle = HEAD; x.fillRect(ox, oy, tableW, L.hdrH);
+  const xs = [ox]; L.cw.forEach(w=>xs.push(xs[xs.length-1]+w));
+  x.fillStyle = INK; x.font = L.fb; x.textAlign = 'left';
+  L.spec.head.forEach((s,j)=>x.fillText(L.clip(s, L.cw[j]-L.cp*2, L.fb), xs[j]+L.cp, oy + L.hdrH/2));
+  let y = oy + L.hdrH; const ys = [y];
+  t.rows.forEach(i=>{
+    const rh = L.rowHs[i];
+    L.spec.rows[i].forEach((c,j)=>{
+      const cell = L.cells[i][j], cx = xs[j] + L.cp, top = y + L.vp, w = L.cw[j] - L.cp*2;
+      if(c.chips){
+        if(cell.none){ x.fillStyle = MUT; x.font = 'italic '+L.f; x.textAlign = 'left'; x.fillText(c.none||'', cx, top + L.lh/2); return; }
+        cell.fl.pos.forEach(q=>{
+          const qx = cx + q.x, qy = top + q.line*(L.chipH+4);
+          x.fillStyle = CHIP; x.beginPath(); x.roundRect ? x.roundRect(qx, qy, q.w, L.chipH, L.chipH/2) : x.rect(qx, qy, q.w, L.chipH); x.fill();
+          const tag = q.c.tag, tagW = tag ? L.tw(tag, L.fcb) + 6 : 0;
+          x.fillStyle = INK; x.font = L.fc; x.textAlign = 'left';
+          x.fillText(L.clip(q.c.t, q.w - L.cpd*2 - tagW, L.fc), qx + L.cpd, qy + L.chipH/2 + 1);
+          if(tag){ x.fillStyle = IMG_TAG[q.c.k] || INK; x.font = L.fcb; x.textAlign = 'right'; x.fillText(tag, qx + q.w - L.cpd, qy + L.chipH/2 + 1); }
+        });
+      }else{
+        x.fillStyle = c.c || INK; x.font = c.b ? L.fb : L.f; x.textAlign = 'left';
+        cell.ls.forEach((l,k)=>x.fillText(l, cx, top + k*L.lh + L.lh/2));
+      }
+    });
+    y += rh; ys.push(y); });
+  x.strokeStyle = LINE; x.lineWidth = 1; x.beginPath();
+  x.rect(ox+.5, oy+.5, tableW-1, y-oy-1);
+  ys.forEach(yy=>{ const q = Math.round(yy)+.5; x.moveTo(ox, q); x.lineTo(ox+tableW, q); });
+  x.moveTo(ox, Math.round(oy+L.hdrH)+.5); x.lineTo(ox+tableW, Math.round(oy+L.hdrH)+.5);
+  if(UC.matGrid!=='aucune' && UC.matGrid!=='lignes') xs.forEach(xx=>{ const q = Math.round(xx)+.5; x.moveTo(q, oy); x.lineTo(q, y); });
+  x.stroke();
+}
 const pngBytes = cv => new Promise((ok,ko)=>cv.toBlob(b=>b ? b.arrayBuffer().then(a=>ok(new Uint8Array(a)),ko) : ko(new Error('image trop grande pour le navigateur')), 'image/png'));
 
+function imgSources(){
+  const S = [];
+  if(MVIS.length && MAPPS.length) S.push({id:'matrice', label:'Matrice', build:imgLayout, draw:imgDraw, mat:true});
+  imgTables().forEach(s=>S.push({id:s.id, label:s.label, build:p=>tblLayout(s,p), draw:tblDraw}));
+  return S;
+}
 function imgDialog(){
-  if(!MVIS.length || !MAPPS.length){ alert('La matrice affichée est vide : rien à exporter (vérifiez les filtres).'); return; }
-  let p = imgParams(), L = null, cur = 0, tmr = 0;
-  openModal('Exporter la matrice en image',
-    '<div style="padding:12px 16px;line-height:1.5"><div class="hint" id="imSum"></div>'+
+  const SRCS = imgSources();
+  if(!SRCS.length){ alert('Rien à exporter : la matrice affichée est vide (vérifiez les filtres) et aucun dictionnaire de profils n\'est renseigné.'); return; }
+  let p = imgParams(), si = 0, L = null, cur = 0, tmr = 0;
+  openModal('Exporter en image',
+    '<div style="padding:12px 16px;line-height:1.5"><div class="tools" id="imTabs" style="margin:0 0 10px;padding:0;gap:6px;flex-wrap:wrap"></div>'+
+    '<div class="hint" id="imSum"></div>'+
     '<div class="tools" style="margin:10px 0;padding:0;gap:14px;flex-wrap:wrap;align-items:end">'+
     '<label>Largeur maximale (px)<br><input class="tx" type="number" id="imW" min="400" max="6000" step="100" style="width:110px"></label>'+
     '<label>Hauteur maximale (px)<br><input class="tx" type="number" id="imH" min="300" max="6000" step="100" style="width:110px"></label>'+
     '<label>Taille du texte (px)<br><input class="tx" type="number" id="imF" min="9" max="24" step="1" style="width:90px"></label>'+
-    '<label>Noms des applications<br><select id="imO"><option value="vertical">Verticaux</option><option value="incline">Penchés (45°)</option></select></label></div>'+
+    '<label id="imAL" title="Inclinaison des noms d\'applications en tête de colonnes : 90 = vertical">Inclinaison des noms (°)<br>'+
+    '<input class="tx" type="number" id="imA" min="20" max="90" step="5" style="width:90px"></label></div>'+
     '<div class="tools" style="margin:0 0 8px;padding:0"><button class="btn sm" id="imPrev">◀</button><span id="imPos" class="hint"></span>'+
-    '<button class="btn sm" id="imNext">▶</button><span class="sp"></span><button class="btn pr" id="imGo">Télécharger</button></div>'+
-    '<div style="overflow:auto;max-height:52vh;border:1px solid var(--line);border-radius:var(--rs);background:#fff"><canvas id="imCv" style="display:block;max-width:100%;height:auto"></canvas></div>'+
-    '<div class="hint" style="margin-top:8px">Les filtres de la page (famille, rubrique, recherche) s\'appliquent. Plusieurs images : chacune répète les en-têtes de colonnes et la colonne des fonctions ; elles sont livrées dans un ZIP.</div></div>',
+    '<button class="btn sm" id="imNext">▶</button><span class="sp"></span><button class="btn" id="imAll">Tout exporter (ZIP)</button>'+
+    '<button class="btn pr" id="imGo">Télécharger</button></div>'+
+    '<div style="overflow:auto;max-height:50vh;border:1px solid var(--line);border-radius:var(--rs);background:#fff"><canvas id="imCv" style="display:block;max-width:100%;height:auto"></canvas></div>'+
+    '<div class="hint" id="imNote" style="margin-top:8px"></div></div>',
     'Aperçu de l\'image affichée', true);
-  $('imW').value = p.w; $('imH').value = p.h; $('imF').value = p.fs; $('imO').value = p.head;
+  $('imW').value = p.w; $('imH').value = p.h; $('imF').value = p.fs; $('imA').value = p.ang;
+  const tabs = ()=>{ $('imTabs').innerHTML = SRCS.map((s,i)=>'<button class="btn sm'+(i===si?' pr':'')+'" data-t="'+i+'">'+esc(s.label)+'</button>').join(''); };
   const refresh = ()=>{
-    p = {w:+$('imW').value, h:+$('imH').value, fs:+$('imF').value, head:$('imO').value};
+    p = {w:+$('imW').value, h:+$('imH').value, fs:+$('imF').value, ang:+$('imA').value};
     try{ localStorage.setItem(IMG_KEY, JSON.stringify(p)); }catch(e){}
     p = imgParams();
-    L = imgLayout(p); cur = Math.min(cur, L.tiles.length-1);
+    L = SRCS[si].build(p); cur = Math.min(cur, L.tiles.length-1);
     show();
   };
   const show = ()=>{
-    const t = L.tiles[cur]; imgDraw(L, cur, $('imCv'));
-    $('imSum').textContent = plural(L.nf,'fonction')+' × '+plural(L.cols.length,'application')+' : '+plural(L.tiles.length,'image')+
-      (L.tiles.length>1 ? ' ('+L.nr+' en hauteur × '+L.nc+' en largeur)' : '');
+    const t = L.tiles[cur], s = SRCS[si]; s.draw(L, cur, $('imCv'));
+    $('imAL').style.display = s.mat ? '' : 'none';
+    $('imSum').textContent = (s.mat ? plural(L.nf,'fonction')+' × '+plural(L.cols.length,'application') : plural(L.nf,'profil'))+' : '+plural(L.tiles.length,'image')+
+      (L.tiles.length>1 ? (L.nc>1 ? ' ('+L.nr+' en hauteur × '+L.nc+' en largeur)' : ' ('+L.nr+' en hauteur)') : '');
     $('imPos').textContent = ' Image '+(cur+1)+' sur '+L.tiles.length+' · '+t.w+' × '+t.h+' px ';
     $('imPrev').disabled = cur===0; $('imNext').disabled = cur===L.tiles.length-1;
     $('imGo').textContent = L.tiles.length>1 ? 'Télécharger le ZIP ('+L.tiles.length+' images)' : 'Télécharger l\'image';
+    $('imNote').textContent = s.mat ? 'Les filtres de la page (famille, rubrique, recherche) s\'appliquent. Plusieurs images : chacune répète les en-têtes de colonnes et la colonne des fonctions.'
+      : 'Colonnes et noms des dictionnaires, comme dans Dictionnaires › '+s.label+'. Plusieurs images : chacune répète la ligne d\'en-tête. Les droits sont indiqués sur chaque élément.';
     const over = L.tiles.some(q=>q.w>p.w || q.h>p.h);
-    $('modalInfo').textContent = over ? 'Attention : une image dépasse la taille maximale (une colonne ou le titre est trop large pour cette valeur).' : 'Aperçu de l\'image affichée';
+    $('modalInfo').textContent = over ? 'Attention : une image dépasse la taille maximale (une colonne ou une ligne est trop grande pour cette valeur).' : 'Aperçu de l\'image affichée';
   };
-  ['imW','imH','imF','imO'].forEach(id=>$(id).oninput = $(id).onchange = ()=>{ clearTimeout(tmr); tmr = setTimeout(()=>{ cur = 0; refresh(); }, 200); });
+  $('imTabs').onclick = e=>{ const b = e.target.closest('[data-t]'); if(!b) return; si = +b.dataset.t; cur = 0; tabs(); refresh(); };
+  ['imW','imH','imF','imA'].forEach(id=>$(id).oninput = $(id).onchange = ()=>{ clearTimeout(tmr); tmr = setTimeout(()=>{ cur = 0; refresh(); }, 200); });
   $('imPrev').onclick = ()=>{ cur--; show(); }; $('imNext').onclick = ()=>{ cur++; show(); };
-  $('imGo').onclick = async ()=>{
-    $('imGo').disabled = true;
-    try{
-      const base = 'matrice_'+(SITE.code||'export'), cv = document.createElement('canvas'), N = L.tiles.length;
-      if(N===1){ imgDraw(L, 0, cv); download(new Blob([await pngBytes(cv)],{type:'image/png'}), base+'.png'); }
-      else{
-        const files = [], z = String(N).length;
-        for(let i=0;i<N;i++){ imgDraw(L, i, cv); const t = L.tiles[i];
-          files.push({name:base+'_'+String(i+1).padStart(z,'0')+'-sur-'+N+'_L'+(t.ri+1)+'C'+(t.ci+1)+'.png', data:await pngBytes(cv)}); }
-        download(zip(files,'application/zip'), base+'_images.zip');
-      }
-    }catch(e){ alert('L\'export de l\'image a échoué : '+(e.message||e)); }
-    $('imGo').disabled = false;
-  };
-  refresh();
+  const base = () => 'matrice_'+(SITE.code||'export');
+  const tileName = (s, LL, i, N) => s.id+'_'+String(i+1).padStart(String(N).length,'0')+'-sur-'+N+(s.mat ? '_L'+(LL.tiles[i].ri+1)+'C'+(LL.tiles[i].ci+1) : '')+'.png';
+  const run = async (btn, job) => { $('imGo').disabled = $('imAll').disabled = true;
+    try{ await job(); }catch(e){ alert('L\'export de l\'image a échoué : '+(e.message||e)); }
+    $('imGo').disabled = $('imAll').disabled = false; };
+  $('imGo').onclick = ()=>run(null, async ()=>{
+    const s = SRCS[si], cv = document.createElement('canvas'), N = L.tiles.length;
+    if(N===1){ s.draw(L, 0, cv); download(new Blob([await pngBytes(cv)],{type:'image/png'}), base()+'_'+s.id+'.png'); return; }
+    const files = [];
+    for(let i=0;i<N;i++){ s.draw(L, i, cv); files.push({name:tileName(s, L, i, N), data:await pngBytes(cv)}); }
+    download(zip(files,'application/zip'), base()+'_'+s.id+'.zip');
+  });
+  $('imAll').onclick = ()=>run(null, async ()=>{
+    const cv = document.createElement('canvas'), files = [];
+    for(let k=0;k<SRCS.length;k++){ const s = SRCS[k], LL = s.build(p), N = LL.tiles.length;
+      const dir = String(k+1).padStart(2,'0')+' '+s.label.replace(/[\\\/:*?"<>|]/g,'-')+'/';
+      for(let i=0;i<N;i++){ s.draw(LL, i, cv); files.push({name:dir+tileName(s, LL, i, N), data:await pngBytes(cv)}); } }
+    download(zip(files,'application/zip'), base()+'_export.zip');
+  });
+  tabs(); refresh();
 }
 $('matImg').onclick = imgDialog;
 
@@ -8619,9 +8752,9 @@ function buildXlsx(){
        [usedBy(f=>cellOf(f,COL_EAS)===String(e.num))]))),
     style:()=>XS.wrap});
 
-  S.push({name:'Profils ELAP', head:true, filter:true, freeze:{r:1}, widths:[8,40,14,60],
-    rows:[['N°','Profil','Statut','Fonctions']].concat(DICO.dpi.map(d=>
-      [/^\d+$/.test(d.code||'') ? +d.code : (d.code||''), d.nom||'', isAbs(d) ? 'à créer dans ELAP' : 'créé dans ELAP',
+  S.push({name:'Profils ELAP', head:true, filter:true, freeze:{r:1}, widths:[8,40,60],
+    rows:[['N°','Profil','Fonctions']].concat(DICO.dpi.map(d=>
+      [/^\d+$/.test(d.code||'') ? +d.code : (d.code||''), d.nom||'',
        d.code && d.code!=='?' ? usedBy(f=>COL_M.some(a=>splitCodes(cellOf(f,a)).indexOf(d.code)>=0)) : ''])),
     style:()=>XS.wrap});
 
