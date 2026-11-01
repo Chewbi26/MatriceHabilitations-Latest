@@ -1119,6 +1119,7 @@ body.lecture [data-da="st"]{pointer-events:none}
       <button class="btn" id="matFill" title="Une application, toutes les fonctions en liste : saisie rapide avec les valeurs du dictionnaire"><i data-ic="pencil"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5 -10.5a2.83 2.83 0 1 0 -4 -4l-10.5 10.5v4"></path><path d="M13.5 6.5l4 4"></path></svg></i> Remplir une colonne…</button>
       <button class="btn" id="matFind" title="Remplacer une valeur ou un code par un autre, partout ou dans une application"><i data-ic="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"></path><path d="M21 21l-6 -6"></path></svg></i> Rechercher / remplacer…</button>
       <button class="btn" id="matPaste" title="Reprendre un tableau Excel (fonctions en lignes, applications en colonnes), rapproché par les noms"><i data-ic="file-spreadsheet"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"></path><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"></path><path d="M8 11h8v7h-8z"></path><path d="M8 15h8"></path><path d="M11 11v7"></path></svg></i> Coller depuis Excel…</button>
+      <button class="btn" id="matImg" title="Exporter la matrice affichée en image (PNG), découpée selon la taille maximale choisie"><i data-ic="photo"></i> Image</button>
       <button class="btn pr" id="addFonc2"><i data-ic="plus"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></i> Nouvelle fonction</button>
     </div>
   </div>
@@ -1235,7 +1236,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.1.2';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.2.0';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -5291,8 +5292,7 @@ const UISCHEMA = [
     S('_tlogo','','texts',null,{keys:['logo'],if:c=>c.brand==='avatar'}),
     S('logo','Image du logo','image',null,{if:c=>c.brand==='image'}),
     S('logoH','Taille du logo','range',null,{min:20,max:64,step:1,u:' px',if:c=>c.brand==='image' && !!c.logo}),
-    S('brandSub','Afficher l\'établissement','tog'),
-    S('_file','Fichier de données','file',null,{kw:'établissement fichier données json excel changer version'})]},
+    S('brandSub','Afficher l\'établissement','tog')]},
   {id:'textes',t:'Textes et bandeau',i:'pencil',items:[
     S('_tnav','Noms du menu','texts',null,{keys:Object.keys(NAVDEF).map(k=>'nav.'+k)}),
     S('_th1','Titres des pages','texts',null,{keys:Object.keys(PAGEH1).map(k=>'h1.'+k)}),
@@ -5833,12 +5833,6 @@ UIP = (()=>{
       case 'preset': return '<div class="seg">'+it.o.map((o,i)=>'<button data-pre="'+i+'">'+o[0]+'</button>').join('')+'</div>';
       case 'tools': return tools();
       case 'note': return '<div class="note">'+it.txt+'</div>';
-      case 'file': { const f = MH.src.file + (MH.src.dir ? ' · dossier '+MH.src.dir.name : ' (ouvert sans dossier)');
-        return '<div class="r2" style="margin-top:0;align-items:center"><span class="nm" style="flex:1;min-width:0;overflow:hidden;'+
-          'text-overflow:ellipsis;white-space:nowrap" title="'+esc(f)+'">'+esc(f)+'</span>'+
-          '<button class="bt sm" data-act="site">'+ic('switch-horizontal')+' Changer…</button>'+
-          '<button class="bt sm" data-act="upd" title="Rechercher et appliquer la dernière version publiée">'+ic('upload')+' Mise à jour…</button></div>'+
-          '<div class="note">Application '+esc(MH.version)+' · structure des données '+MH.format+'. L\'Excel porte le nom du fichier de données.<br>Vérification des mises à jour à l\'ouverture : '+(updH() ? 'toutes les '+updH()+' h' : 'désactivée')+' (réglage <span class="mono">dico.cfg.updH</span> du fichier de données, en heures ; 0 : jamais).</div>'; }
       case 'texts': return '<div class="tl">'+it.keys.map(k=>'<label title="'+esc(TXTDEF[k][0])+'">'+esc(TXTDEF[k][0])+'</label>'+
         '<input class="tx" data-t="'+k+'" maxlength="80" placeholder="'+esc(TXTDEF[k][1])+'" title="Vide : « '+esc(TXTDEF[k][1])+' »">').join('')+'</div>';
       case 'area': return '<textarea class="ar" maxlength="800" placeholder="'+esc(it.ph)+'"></textarea>'+
@@ -5888,7 +5882,7 @@ UIP = (()=>{
   bd.innerHTML = UISCHEMA.map(s=>'<div class="sec" data-sec="'+s.id+'"><button class="sh" data-open="'+s.id+'">'+ic(s.i)+s.t+'<small class="cnt"></small>'+
     ic('chevron-right').replace('class="i"','class="i chev"')+'</button><div class="sb">'+
     s.items.map(it=>{
-      const stk = ['color','order','font','tools','note','texts','area','image','codes','colmap','file'].indexOf(it.c)>=0, tg = it.c==='tog';
+      const stk = ['color','order','font','tools','note','texts','area','image','codes','colmap'].indexOf(it.c)>=0, tg = it.c==='tog';
       return '<div class="it'+(stk?' stk':'')+(tg?' tg':'')+'" data-k="'+it.k+'">'+(it.l?'<label>'+it.l+'</label>':'')+ctl(it)+'</div>';
     }).join('')+'</div></div>').join('')+'<div class="nores" id="nores"></div>';
   let cur = null, dragging = false;              /* cur : aperçu en cours (curseur tenu), sinon UC */
@@ -5996,8 +5990,6 @@ UIP = (()=>{
     reset(){ load({}, 'retour aux réglages retenus le 06/10'); },
     hide(){ VIEW.shown = false; keep(); sync(); },
     savefile(){ $('dl').click(); },
-    site(){ siteDialog(); },
-    upd(){ updateDialog(); },
     preset(b){ const p = PRESETS[+b.dataset.n]; load(p[1], 'préréglage « '+p[0]+' »'); },
     save(){ const n = R.getElementById('svname'), L = LSG('portail-uip-brouillons') || [];
       const name = n.value.trim() || 'Brouillon '+(L.length+1), d = new Date();
@@ -8248,6 +8240,177 @@ async function applyUpdate(app, html){
   if(updDue()) fetchLatest().then(parseApp).then(a=>updNote(a.version), e=>updNote(null, updErr(e))); }
 
 /* ============================================================================
+   17 ter. EXPORT DE LA MATRICE EN IMAGE (PNG)
+   Dessine la matrice affichée (fonctions de MVIS, applications de MAPPS : filtres de la page) dans un canvas,
+   sans bibliothèque. Largeur et hauteur maximales d'une image réglables : si la matrice est plus grande, elle est
+   découpée en plusieurs images ; chaque image répète les en-têtes de colonnes et la colonne des fonctions (ainsi
+   que le titre de la famille, « suite »). Les images multiples sont livrées dans un ZIP. Les noms des applications
+   s'écrivent à la verticale ou penchés à 45° (réglage) ; la largeur de chaque colonne s'adapte à son contenu.
+   ========================================================================== */
+const IMG_KEY = 'mh-img';
+function imgParams(){
+  const d = {w:1800, h:1200, fs:13, head:UC.matHead==='incline' ? 'incline' : 'vertical'};
+  try{ Object.assign(d, JSON.parse(localStorage.getItem(IMG_KEY)||'{}')); }catch(e){}
+  const n = (v,a,b,x) => Math.min(b, Math.max(a, Math.round(+v)||x));
+  return {w:n(d.w,400,6000,1800), h:n(d.h,300,6000,1200), fs:n(d.fs,9,24,13), head:d.head==='incline' ? 'incline' : 'vertical'};
+}
+function imgLayout(p){
+  const cv = document.createElement('canvas'), x = cv.getContext('2d');
+  const fam = getComputedStyle(document.body).fontFamily || 'sans-serif', fs = p.fs;
+  const f = fs+'px '+fam, fb = '600 '+fs+'px '+fam;
+  const rowH = Math.round(fs*1.9), pad = 14, cp = 12, lh = fs*1.3, S45 = Math.SQRT1_2;
+  const tw = (s,font)=>{ x.font = font || f; return x.measureText(s).width; };
+  const clip = (s,max,font)=>{ if(tw(s,font)<=max) return s; while(s.length>1 && tw(s+'…',font)>max) s = s.slice(0,-1); return s+'…'; };
+  const cols = MAPPS.slice(), fn = MVIS.slice();
+  const txt = v => isX(v) || isQ(v) ? '' : (v.length>22 ? v.slice(0,21)+'…' : v);
+  const lbl = cols.map(a=>clip(a, 300, fb)), lblW = lbl.map(s=>tw(s,fb));
+  const cw = cols.map((a,i)=>{ let m = 0; fn.forEach(r=>{ const v = cellOf(r,a); if(v) m = Math.max(m, tw(txt(v), fb)); });
+    return Math.ceil(Math.max(fs*2.2, m ? m+cp*2 : 0, p.head==='incline' ? fs*1.9 : fs*1.6)); });
+  const names = fn.map(r=>clip(r.nom, 380, f));
+  const groups = UC.matGroup;
+  const rowLabelW = Math.ceil(Math.max(tw('Fonction',fb), ...names.map(s=>tw(s)), 40) + cp*2);
+  const maxL = Math.max(0, ...lblW);
+  const hdrH = Math.ceil(cols.length ? (p.head==='incline' ? maxL*S45 + lh*S45 + 12 : maxL + 14) : lh*2);
+  const fh = 0;                                   /* pas de pied d'image : les images s'intègrent à une procédure */
+  // colonnes : découpage en gardant la colonne des fonctions
+  const ext = idx => { const tot = idx.reduce((s,i)=>s+cw[i],0); let r = tot;
+    if(p.head==='incline'){ let pos = 0; idx.forEach(i=>{ r = Math.max(r, pos + cw[i]/2 + lblW[i]*S45 + lh*S45/2); pos += cw[i]; }); }
+    return rowLabelW + r; };
+  const ct = []; let cur = [];
+  cols.forEach((a,i)=>{ if(cur.length && ext(cur.concat(i)) > p.w - pad*2){ ct.push(cur); cur = []; } cur.push(i); });
+  if(cur.length || !ct.length) ct.push(cur);
+  // lignes : découpage, titre de famille jamais seul en bas, rappelé en début d'image (suite)
+  const items = []; let g = null;
+  fn.forEach((r,k)=>{ if(groups && r.groupe!==g){ g = r.groupe; items.push({g:g||'Sans famille'}); } items.push({r:r, k:k}); });
+  const availH = p.h - pad*2 - hdrH - fh, rt = [];
+  let rc = [], used = 0, gname = '';
+  const gOf = it => it.r ? (it.r.groupe || 'Sans famille') : it.g;
+  items.forEach(it=>{
+    if(rc.length && used + rowH > availH){
+      let carry = []; if(rc[rc.length-1].g) carry = [rc.pop()];
+      rt.push(rc); rc = carry; used = carry.length*rowH;
+    }
+    if(!rc.length && it.r && groups){ rc.push({g:gOf(it)+' (suite)', suite:true}); used += rowH; }
+    rc.push(it); used += rowH; });
+  if(rc.length || !rt.length) rt.push(rc);
+  const tiles = [];
+  rt.forEach((rows,ri)=>ct.forEach((idx,ci)=>tiles.push({ri:ri, ci:ci, rows:rows, idx:idx,
+    w:Math.ceil(ext(idx)+pad*2), h:hdrH + rows.length*rowH + pad*2 + fh})));
+  return {p:p, fam:fam, f:f, fb:fb, fs:fs, rowH:rowH, pad:pad, cp:cp, lh:lh, cols:cols, lbl:lbl, cw:cw, names:names, rowLabelW:rowLabelW,
+          hdrH:hdrH, fh:fh, tiles:tiles, nr:rt.length, nc:ct.length, nf:fn.length, tw:tw, clip:clip, txt:txt, fn:fn};
+}
+function imgDraw(L, n, cv){
+  const t = L.tiles[n], p = L.p, fs = L.fs, pad = L.pad, S45 = Math.SQRT1_2;
+  cv.width = t.w; cv.height = t.h;
+  const x = cv.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const INK = '#1f2328', MUT = '#6b7280', LINE = '#d1d5db', HEAD = '#f3f4f6', GRP = '#e5e7eb', OK = '#15803d';
+  x.fillStyle = '#fff'; x.fillRect(0,0,t.w,t.h);
+  x.textBaseline = 'middle';
+  const tableW = L.rowLabelW + t.idx.reduce((s,i)=>s+L.cw[i],0);
+  const ox = pad, oy = pad, rowsTop = oy + L.hdrH;
+  // en-têtes
+  x.fillStyle = HEAD; x.fillRect(ox, oy, tableW, L.hdrH);
+  x.fillStyle = INK; x.font = L.fb; x.textAlign = 'left';
+  x.fillText('Fonction', ox + L.cp, oy + L.hdrH - L.rowH/2);
+  let px = ox + L.rowLabelW;
+  t.idx.forEach(i=>{
+    const cw = L.cw[i], col = appCol(L.cols[i]);
+    if(col){ x.fillStyle = col; x.fillRect(px, oy, cw, 3); }
+    x.save(); x.fillStyle = INK; x.font = L.fb; x.textAlign = 'left';
+    if(p.head==='incline'){ x.translate(px + cw/2, oy + L.hdrH - 5); x.rotate(-Math.PI/4); x.fillText(L.lbl[i], 0, 0); }
+    else { x.translate(px + cw/2, oy + L.hdrH - 7); x.rotate(-Math.PI/2); x.fillText(L.lbl[i], 0, 0); }
+    x.restore(); px += cw; });
+  // lignes
+  const gridV = UC.matGrid!=='aucune' && UC.matGrid!=='lignes';
+  let y = rowsTop;
+  t.rows.forEach(it=>{
+    if(it.g){
+      x.fillStyle = GRP; x.fillRect(ox, y, tableW, L.rowH);
+      let tx = ox + L.cp; const fc = famCol(it.g.replace(/ \(suite\)$/,''));
+      if(fc && !it.suite){ x.fillStyle = fc; x.beginPath(); x.arc(tx+4, y+L.rowH/2, 4, 0, 7); x.fill(); tx += 14; }
+      x.fillStyle = INK; x.font = L.fb; x.textAlign = 'left'; x.fillText(it.g, tx, y + L.rowH/2);
+    }else{
+      x.fillStyle = INK; x.font = L.f; x.textAlign = 'left'; x.fillText(L.names[it.k], ox + L.cp, y + L.rowH/2);
+      let cx = ox + L.rowLabelW;
+      t.idx.forEach(i=>{
+        const cw = L.cw[i], v = cellOf(it.r, L.cols[i]), mx = cx + cw/2, my = y + L.rowH/2;
+        if(v){
+          if(isX(v)){ const s = fs*0.36; x.strokeStyle = OK; x.lineWidth = Math.max(2, fs/6); x.lineCap = x.lineJoin = 'round';
+            x.beginPath(); x.moveTo(mx-s, my); x.lineTo(mx-s*0.3, my+s*0.7); x.lineTo(mx+s, my-s*0.7); x.stroke(); }
+          else if(isQ(v)){ x.fillStyle = '#fef3c7'; x.beginPath(); x.arc(mx, my, fs*0.62, 0, 7); x.fill();
+            x.fillStyle = '#b45309'; x.font = L.fb; x.textAlign = 'center'; x.fillText('?', mx, my+1); }
+          else { const k = CODES.test(v) ? codeCol(splitCodes(v)[0]) : '';
+            x.fillStyle = k || INK; x.font = L.fb; x.textAlign = 'center'; x.fillText(L.txt(v), mx, my); }
+        }
+        cx += cw; });
+    }
+    y += L.rowH; });
+  // grille
+  x.strokeStyle = LINE; x.lineWidth = 1; x.beginPath();
+  x.rect(ox+.5, oy+.5, tableW-1, L.hdrH + t.rows.length*L.rowH - 1);
+  for(let r=0;r<=t.rows.length;r++){ const yy = Math.round(rowsTop + r*L.rowH)+.5; x.moveTo(ox, yy); x.lineTo(ox+tableW, yy); }
+  if(gridV){ let gx = ox + L.rowLabelW; for(let k=0;k<=t.idx.length;k++){
+      x.moveTo(Math.round(gx)+.5, oy); x.lineTo(Math.round(gx)+.5, rowsTop + t.rows.length*L.rowH);
+      if(k<t.idx.length) gx += L.cw[t.idx[k]]; } }
+  x.stroke();
+}
+const pngBytes = cv => new Promise((ok,ko)=>cv.toBlob(b=>b ? b.arrayBuffer().then(a=>ok(new Uint8Array(a)),ko) : ko(new Error('image trop grande pour le navigateur')), 'image/png'));
+
+function imgDialog(){
+  if(!MVIS.length || !MAPPS.length){ alert('La matrice affichée est vide : rien à exporter (vérifiez les filtres).'); return; }
+  let p = imgParams(), L = null, cur = 0, tmr = 0;
+  openModal('Exporter la matrice en image',
+    '<div style="padding:12px 16px;line-height:1.5"><div class="hint" id="imSum"></div>'+
+    '<div class="tools" style="margin:10px 0;padding:0;gap:14px;flex-wrap:wrap;align-items:end">'+
+    '<label>Largeur maximale (px)<br><input class="tx" type="number" id="imW" min="400" max="6000" step="100" style="width:110px"></label>'+
+    '<label>Hauteur maximale (px)<br><input class="tx" type="number" id="imH" min="300" max="6000" step="100" style="width:110px"></label>'+
+    '<label>Taille du texte (px)<br><input class="tx" type="number" id="imF" min="9" max="24" step="1" style="width:90px"></label>'+
+    '<label>Noms des applications<br><select id="imO"><option value="vertical">Verticaux</option><option value="incline">Penchés (45°)</option></select></label></div>'+
+    '<div class="tools" style="margin:0 0 8px;padding:0"><button class="btn sm" id="imPrev">◀</button><span id="imPos" class="hint"></span>'+
+    '<button class="btn sm" id="imNext">▶</button><span class="sp"></span><button class="btn pr" id="imGo">Télécharger</button></div>'+
+    '<div style="overflow:auto;max-height:52vh;border:1px solid var(--line);border-radius:var(--rs);background:#fff"><canvas id="imCv" style="display:block;max-width:100%;height:auto"></canvas></div>'+
+    '<div class="hint" style="margin-top:8px">Les filtres de la page (famille, rubrique, recherche) s\'appliquent. Plusieurs images : chacune répète les en-têtes de colonnes et la colonne des fonctions ; elles sont livrées dans un ZIP.</div></div>',
+    'Aperçu de l\'image affichée', true);
+  $('imW').value = p.w; $('imH').value = p.h; $('imF').value = p.fs; $('imO').value = p.head;
+  const refresh = ()=>{
+    p = {w:+$('imW').value, h:+$('imH').value, fs:+$('imF').value, head:$('imO').value};
+    try{ localStorage.setItem(IMG_KEY, JSON.stringify(p)); }catch(e){}
+    p = imgParams();
+    L = imgLayout(p); cur = Math.min(cur, L.tiles.length-1);
+    show();
+  };
+  const show = ()=>{
+    const t = L.tiles[cur]; imgDraw(L, cur, $('imCv'));
+    $('imSum').textContent = plural(L.nf,'fonction')+' × '+plural(L.cols.length,'application')+' : '+plural(L.tiles.length,'image')+
+      (L.tiles.length>1 ? ' ('+L.nr+' en hauteur × '+L.nc+' en largeur)' : '');
+    $('imPos').textContent = ' Image '+(cur+1)+' sur '+L.tiles.length+' · '+t.w+' × '+t.h+' px ';
+    $('imPrev').disabled = cur===0; $('imNext').disabled = cur===L.tiles.length-1;
+    $('imGo').textContent = L.tiles.length>1 ? 'Télécharger le ZIP ('+L.tiles.length+' images)' : 'Télécharger l\'image';
+    const over = L.tiles.some(q=>q.w>p.w || q.h>p.h);
+    $('modalInfo').textContent = over ? 'Attention : une image dépasse la taille maximale (une colonne ou le titre est trop large pour cette valeur).' : 'Aperçu de l\'image affichée';
+  };
+  ['imW','imH','imF','imO'].forEach(id=>$(id).oninput = $(id).onchange = ()=>{ clearTimeout(tmr); tmr = setTimeout(()=>{ cur = 0; refresh(); }, 200); });
+  $('imPrev').onclick = ()=>{ cur--; show(); }; $('imNext').onclick = ()=>{ cur++; show(); };
+  $('imGo').onclick = async ()=>{
+    $('imGo').disabled = true;
+    try{
+      const base = 'matrice_'+(SITE.code||'export'), cv = document.createElement('canvas'), N = L.tiles.length;
+      if(N===1){ imgDraw(L, 0, cv); download(new Blob([await pngBytes(cv)],{type:'image/png'}), base+'.png'); }
+      else{
+        const files = [], z = String(N).length;
+        for(let i=0;i<N;i++){ imgDraw(L, i, cv); const t = L.tiles[i];
+          files.push({name:base+'_'+String(i+1).padStart(z,'0')+'-sur-'+N+'_L'+(t.ri+1)+'C'+(t.ci+1)+'.png', data:await pngBytes(cv)}); }
+        download(zip(files,'application/zip'), base+'_images.zip');
+      }
+    }catch(e){ alert('L\'export de l\'image a échoué : '+(e.message||e)); }
+    $('imGo').disabled = false;
+  };
+  refresh();
+}
+$('matImg').onclick = imgDialog;
+
+/* ============================================================================
    18. EXPORT EXCEL — un vrai .xlsx, sans bibliothèque : un ZIP non compressé
    de quelques fichiers XML. Lecture seule : rien ne remonte de l'Excel au portail.
    ========================================================================== */
@@ -8322,14 +8485,14 @@ const CRC = (()=>{ const t = new Uint32Array(256);
   for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; }
   return t; })();
 function crc32(b){ let c = 0xFFFFFFFF; for(let i=0;i<b.length;i++) c = CRC[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; }
-function zip(files){
+function zip(files, type){
   const te = new TextEncoder(), out = [], cen = [];
   const d = new Date();
   const dt = ((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
   const tm = (d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1);
   let off = 0;
   files.forEach(f=>{
-    const nm = te.encode(f.name), data = te.encode(f.data), crc = crc32(data);
+    const nm = te.encode(f.name), data = typeof f.data==='string' ? te.encode(f.data) : f.data, crc = crc32(data);
     const h = new DataView(new ArrayBuffer(30));
     h.setUint32(0,0x04034b50,true); h.setUint16(4,20,true); h.setUint16(6,0x0800,true); h.setUint16(8,0,true);
     h.setUint16(10,tm,true); h.setUint16(12,dt,true); h.setUint32(14,crc,true);
@@ -8348,7 +8511,7 @@ function zip(files){
   e.setUint32(0,0x06054b50,true); e.setUint16(8,files.length,true); e.setUint16(10,files.length,true);
   e.setUint32(12,size,true); e.setUint32(16,off,true);
   return new Blob(out.concat(cen,[new Uint8Array(e.buffer)]),
-    {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    {type:type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 
 /* une valeur de la matrice, en clair (ce que montre la fiche, sans mise en forme) */
