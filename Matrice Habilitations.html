@@ -719,6 +719,12 @@ mark{background:#ffe08a;color:#4a3600;border-radius:2px;padding:0 1px}
 .boot-t{display:flex;gap:8px;flex-wrap:wrap}
 .boot-err{background:var(--dang-bg);color:var(--dang);border-radius:var(--rs);padding:8px 12px;margin-bottom:12px}
 .sf-ver{opacity:.45;font-size:11px}
+.sf-verrow{display:flex;align-items:center;gap:6px}
+.updbtn{position:relative;display:inline-flex;background:none;border:0;color:inherit;opacity:.55;cursor:pointer;padding:2px;border-radius:4px}
+.updbtn:hover{opacity:1}.updbtn svg{width:14px;height:14px}
+.updbtn.new{opacity:1;color:var(--side-acc)}
+.updbtn.new::after{content:"";position:absolute;top:0;right:0;width:6px;height:6px;border-radius:50%;background:var(--side-acc)}
+.updbtn.warn{opacity:1;color:#f0a000}
 body.nav-ic .sf-ver{display:none}
 a.sf-link{text-decoration:none}
 #dl .lbl{display:none}
@@ -1229,7 +1235,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.1.1';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.1.2';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -5832,7 +5838,7 @@ UIP = (()=>{
           'text-overflow:ellipsis;white-space:nowrap" title="'+esc(f)+'">'+esc(f)+'</span>'+
           '<button class="bt sm" data-act="site">'+ic('switch-horizontal')+' Changer…</button>'+
           '<button class="bt sm" data-act="upd" title="Rechercher et appliquer la dernière version publiée">'+ic('upload')+' Mise à jour…</button></div>'+
-          '<div class="note">Application '+esc(MH.version)+' · structure des données '+MH.format+'. L\'Excel porte le nom du fichier de données.</div>'; }
+          '<div class="note">Application '+esc(MH.version)+' · structure des données '+MH.format+'. L\'Excel porte le nom du fichier de données.<br>Vérification des mises à jour à l\'ouverture : '+(updH() ? 'toutes les '+updH()+' h' : 'désactivée')+' (réglage <span class="mono">dico.cfg.updH</span> du fichier de données, en heures ; 0 : jamais).</div>'; }
       case 'texts': return '<div class="tl">'+it.keys.map(k=>'<label title="'+esc(TXTDEF[k][0])+'">'+esc(TXTDEF[k][0])+'</label>'+
         '<input class="tx" data-t="'+k+'" maxlength="80" placeholder="'+esc(TXTDEF[k][1])+'" title="Vide : « '+esc(TXTDEF[k][1])+' »">').join('')+'</div>';
       case 'area': return '<textarea class="ar" maxlength="800" placeholder="'+esc(it.ph)+'"></textarea>'+
@@ -8017,10 +8023,6 @@ $('appVer').title = 'Application '+MH.version+' · structure des données '+MH.f
   (MH.loaded.appVersion ? '\nDonnées enregistrées par la version '+MH.loaded.appVersion+
    (MH.loaded.savedAt ? ' le '+fmt(new Date(MH.loaded.savedAt)) : '') : '');
 
-$('appVer').style.cursor = 'pointer';
-$('appVer').title += '\nCliquer pour rechercher une mise à jour.';
-$('appVer').onclick = ()=>updateDialog();
-
 $('dl').onclick = ()=>saveFile(false);
 $('xl').onclick = ()=>download(buildXlsx(), XLSX_NAME);
 window.addEventListener('focus', checkDisk);
@@ -8062,6 +8064,29 @@ function parseApp(html){
   if(!(b.format >= 1) || !b.MIGR) throw new Error('structure des données de la nouvelle version illisible.');
   return {version:v[1], format:b.format, MIGR:b.MIGR};
 }
+/* vérification automatique : au plus une fois par période (DICO.cfg.updH, en heures ; 12 par défaut ; 0 : jamais).
+   Le résultat est gardé par le navigateur (localStorage) : date de la dernière vérification réussie, dernière
+   version publiée, dernière erreur. Une vérification échouée est retentée à l'ouverture suivante.
+   Le bouton à côté de la version lance aussi la vérification à la demande. */
+const UPD_KEY = 'mh-upd';
+let UPD = {};
+try{ UPD = JSON.parse(localStorage.getItem(UPD_KEY)||'{}') || {}; }catch(e){}
+function updH(){ const v = DICO.cfg && DICO.cfg.updH; return typeof v==='number' && v>=0 ? v : 12; }
+const updDue = () => updH()>0 && (!UPD.t || Date.now()-UPD.t >= updH()*3600000);
+const updErr = e => e instanceof TypeError ? 'serveur inaccessible (réseau bloqué ou hors ligne)' : String(e && e.message || e);
+function updNote(version, err){
+  if(err) UPD.err = err; else { UPD.t = Date.now(); UPD.latest = version; delete UPD.err; }
+  try{ localStorage.setItem(UPD_KEY, JSON.stringify(UPD)); }catch(e){}
+  updIcon();
+}
+/* le bouton à côté du numéro de version : actualiser, nouvelle version disponible, ou vérification échouée */
+function updIcon(){
+  const b = $('updBtn'); if(!b) return;
+  let ico = 'refresh', cls = '', tip = 'Rechercher une mise à jour (version '+MH.version+')'+(UPD.t ? '\nDernière vérification le '+fmt(new Date(UPD.t))+'.' : '');
+  if(UPD.err){ ico = 'alert-triangle'; cls = ' warn'; tip = 'La vérification des mises à jour a échoué : '+UPD.err+'\nCliquer pour réessayer.'; }
+  else if(UPD.latest && vcmp(UPD.latest, MH.version)>0){ cls = ' new'; tip = 'Version '+UPD.latest+' disponible : cliquer pour mettre à jour.'; }
+  b.className = 'updbtn'+cls; b.innerHTML = ic(ico); b.title = tip;
+}
 async function fetchLatest(){
   const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), 20000);
   try{ const r = await fetch(UPDATE_URL, {cache:'no-store', signal:ctl.signal});
@@ -8084,8 +8109,9 @@ async function updateDialog(given){
     if($('upRetry')) $('upRetry').onclick = ()=>updateDialog();
   };
   let html, app;
-  try{ html = given!=null ? given : await fetchLatest(); app = parseApp(html); }
+  try{ html = given!=null ? given : await fetchLatest(); app = parseApp(html); if(given==null) updNote(app.version); }
   catch(e){
+    if(given==null) updNote(null, updErr(e));
     upShow('<div class="note w"><b>Impossible de lire la dernière version.</b> '+esc(e.message||e)+'</div>'+
       '<p>Si le réseau de l\'établissement bloque l\'accès à GitHub, téléchargez '+
       '<a href="'+UPDATE_URL+'" target="_blank" rel="noopener">le fichier de la dernière version</a> depuis un poste qui y accède, '+
@@ -8214,6 +8240,12 @@ async function applyUpdate(app, html){
     upShow('<div class="note w"><b>La mise à jour a échoué.</b> '+esc(e.message||e)+'</div>');
   }finally{ BUSY = false; }
 }
+
+{ const v = $('appVer'), row = document.createElement('div'), b = document.createElement('button');
+  row.className = 'sf-verrow'; v.parentNode.insertBefore(row, v); row.appendChild(v);
+  b.id = 'updBtn'; b.type = 'button'; b.onclick = ()=>updateDialog(); row.appendChild(b);
+  updIcon();
+  if(updDue()) fetchLatest().then(parseApp).then(a=>updNote(a.version), e=>updNote(null, updErr(e))); }
 
 /* ============================================================================
    18. EXPORT EXCEL — un vrai .xlsx, sans bibliothèque : un ZIP non compressé
