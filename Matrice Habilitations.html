@@ -1236,7 +1236,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.2.5';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.2.6';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -1792,7 +1792,10 @@ const dNumNom = k => dcfg(k).numNom || DCOLS[k].num;
 const easVal = (e,k) => k==='uf' ? ufText(e) : k==='agenda' ? agText(e) : String(e[k]==null ? '' : e[k]);
 /* nom affiché du logiciel des profils numérotés (Easily par défaut) : sert dans tous les libellés */
 function EASN(){ return dcfg('eas').nom || DICODEF.eas.nom; }
+/* nom de l'onglet d'un dictionnaire. Profils numérotés du dossier patient : cfg.eas.tab (« Profils Axigate »), distinct
+   du nom du logiciel (EASN, « Axigate ») qui sert dans les phrases, les UF et les agendas. */
 function dName(k){
+  if(k==='eas' && dcfg('eas').tab) return dcfg('eas').tab;
   const n = dcfg(k).nom; if(n) return n;
   if(k==='uf') return 'UF '+EASN();
   if(k==='ag') return 'Agendas '+EASN();
@@ -4204,7 +4207,13 @@ function dicoCfg(){
         const n = v['n_'+k];
         /* on ne touche qu'à ce qui a changé : un nom d'UF ou d'agendas laissé tel quel suit
            celui du logiciel (« UF Axigate ») ; un nom vidé revient au nom d'origine */
-        if(n!==avant[k]) dSet(k,'nom', n || dDefNom(k));
+        if(n!==avant[k]){
+          if(k==='eas'){                      /* l'onglet seul : le nom du logiciel (UF, agendas, phrases) ne change pas */
+            const c = (DICO.cfg = DICO.cfg || {}).eas = DICO.cfg.eas || {};
+            if(!n || n===EASN()) delete c.tab; else c.tab = n;
+            if(!Object.keys(c).length) delete DICO.cfg.eas;
+          }else dSet(k,'nom', n || dDefNom(k));
+        }
         if(DICODEF[k].app && v['a_'+k]!==dApp(k)) dSet(k,'app', v['a_'+k]);
         const off = (DICO.cfg && DICO.cfg.off || []).filter(x=>x!==k);
         if(!v['s_'+k]) off.push(k);
@@ -8294,7 +8303,7 @@ function imgLayout(p){
     return Math.ceil(Math.max(fs*2.2, m ? m+cp*2 : 0, lh/SIN + 6)); });
   const names = fn.map(r=>clip(r.nom, 380, f));
   const groups = UC.matGroup;
-  const rowLabelW = Math.ceil(Math.max(tw('Fonction',fb), ...names.map(s=>tw(s)), 40) + cp*2);
+  const rowLabelW = Math.ceil(Math.max(tw('Fonction',fb) + tw('Application',fb) + cp, ...names.map(s=>tw(s)), 40) + cp*2);
   const maxL = Math.max(0, ...lblW);
   const hdrH = Math.ceil(cols.length ? maxL*SIN + lh*COS + 12 : lh*2);
   // colonnes : découpage en gardant la colonne des fonctions
@@ -8336,6 +8345,9 @@ function imgDraw(L, n, cv){
   x.fillStyle = HEAD; x.fillRect(ox, oy, tableW, L.hdrH);
   x.fillStyle = INK; x.font = L.fb; x.textAlign = 'left';
   x.fillText('Fonction', ox + L.cp, oy + L.hdrH - L.rowH/2);
+  x.textAlign = 'right'; x.fillText('Application', ox + L.rowLabelW - L.cp, oy + L.rowH/2 + 2);   /* case d'angle : barre oblique entre les deux titres */
+  x.strokeStyle = INK; x.lineWidth = 1.5; x.beginPath(); x.moveTo(ox, oy); x.lineTo(ox + L.rowLabelW, oy + L.hdrH); x.stroke();
+  x.textAlign = 'left';
   let px = ox + L.rowLabelW;
   t.idx.forEach(i=>{
     const cw = L.cw[i], col = appCol(L.cols[i]);
@@ -8455,20 +8467,23 @@ function tblLayout(spec, p){
   /* légende : les initiales des droits présents dans le tableau, avec leur sens (CT, L, L+É) */
   const lg = {}; spec.rows.forEach(r=>r.forEach(c=>{ if(c.chips) c.chips.forEach(q=>{ if(q.tag) lg[q.tag] = {tag:q.tag, leg:q.leg, k:q.k}; }); }));
   const leg = ['CT','L','L+É'].filter(k=>lg[k]).map(k=>lg[k]), lgH = leg.length ? lh + 12 : 0;
-  const hdrH = lh + vp*2 + 2, availH = p.h - pad*2 - hdrH - lgH;
+  const titleH = Math.round(fs*2.2);                 /* titre : le nom du dictionnaire, sur chaque image */
+  const hdrH = lh + vp*2 + 2, availH = p.h - pad*2 - hdrH - lgH - titleH;
   const rt = []; let cur = [], used = 0;
   rowHs.forEach((h,i)=>{ if(cur.length && used + h > availH){ rt.push(cur); cur = []; used = 0; } cur.push(i); used += h; });
   if(cur.length || !rt.length) rt.push(cur);
-  const tiles = rt.map((rows,ri)=>({ri:ri, ci:0, rows:rows, w:tot + pad*2, h:hdrH + rows.reduce((s,i)=>s+rowHs[i],0) + pad*2 + lgH}));
+  const tiles = rt.map((rows,ri)=>({ri:ri, ci:0, rows:rows, w:tot + pad*2, h:hdrH + rows.reduce((s,i)=>s+rowHs[i],0) + pad*2 + lgH + titleH}));
   return {kind:'tbl', spec:spec, p:p, fam:fam, f:f, fb:fb, fc:fc, fcb:fcb, pad:pad, cp:cp, vp:vp, lh:lh, chipH:chipH, cpd:cpd, cw:cw, cells:cells, rowHs:rowHs,
-          hdrH:hdrH, leg:leg, lgH:lgH, tiles:tiles, nr:rt.length, nc:1, nf:spec.rows.length, clip:clip, tw:tw};
+          hdrH:hdrH, titleH:titleH, leg:leg, lgH:lgH, tiles:tiles, nr:rt.length, nc:1, nf:spec.rows.length, clip:clip, tw:tw};
 }
 function tblDraw(L, n, cv){
   const t = L.tiles[n], pad = L.pad, {INK, MUT, LINE, HEAD, CHIP} = IMG;
   cv.width = t.w; cv.height = t.h;
   const x = cv.getContext('2d');
   x.fillStyle = '#fff'; x.fillRect(0,0,t.w,t.h); x.textBaseline = 'middle';
-  const tableW = t.w - pad*2, ox = pad, oy = pad;
+  const tableW = t.w - pad*2, ox = pad, oy = pad + L.titleH;
+  x.fillStyle = INK; x.font = '700 '+(L.p.fs+4)+'px '+L.fam; x.textAlign = 'left';
+  x.fillText(L.clip(L.spec.label, tableW, '700 '+(L.p.fs+4)+'px '+L.fam), ox, pad + L.titleH/2 - 3);
   x.fillStyle = HEAD; x.fillRect(ox, oy, tableW, L.hdrH);
   const xs = [ox]; L.cw.forEach(w=>xs.push(xs[xs.length-1]+w));
   x.fillStyle = INK; x.font = L.fb; x.textAlign = 'left';
