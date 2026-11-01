@@ -1236,7 +1236,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.2.2';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.2.3';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -8359,7 +8359,7 @@ function imgTables(){
   if(ok('part') && DICO.partages.length){ const cols = dCols('part');
     T.push({id:'partages', label:dName('part'), head:[dNumNom('part')].concat(cols.map(c=>c.nom)),
       rows:DICO.partages.map(p=>[{t:p.code, b:1}].concat(cols.map(c=>c.k==='dossiers'
-        ? {chips:p.dossiers.map(d=>{ const r = pDroit(p,d); return r ? {t:d, tag:PDROIT[r], k:r} : {t:d}; }), none:'aucun dossier'}
+        ? {chips:p.dossiers.map(d=>{ const r = pDroit(p,d); return r ? {t:d, tag:PCOURT[r], leg:PDROIT[r], k:r} : {t:d}; }), none:'aucun dossier'}
         : cellT(p,c.k))))}); }
   if(ok('mailp') && (DICO.mailp||[]).length){ const cols = dCols('mailp');
     T.push({id:'messagerie', label:dName('mailp'), head:[dNumNom('mailp')].concat(cols.map(c=>c.nom)),
@@ -8374,7 +8374,7 @@ function imgTables(){
         if(c.k==='agenda'){ const g = agOf(e);
           return g.mode==='texte' ? {t:e.agenda==='?' ? 'à confirmer' : (e.agenda||'')} : g.mode==='tout' ? {chips:[{t:'Tous les agendas'}]}
                : g.mode==='q' ? {t:'à confirmer'}
-               : {chips:g.list.map(x=>x.d ? {t:nmLabel('ag',x.nom), tag:AGDROIT[x.d], k:x.d} : {t:nmLabel('ag',x.nom)}), none:'aucun'}; }
+               : {chips:g.list.map(x=>x.d ? {t:nmLabel('ag',x.nom), tag:AGCOURT[x.d], leg:AGDROIT[x.d], k:x.d} : {t:nmLabel('ag',x.nom)}), none:'aucun'}; }
         return cellT(e,c.k); })))}); }
   if(ok('dpi') && DICO.dpi.length){ const cols = dCols('dpi');
     T.push({id:'profils-elap', label:dName('dpi'), head:[dNumNom('dpi')].concat(cols.map(c=>c.nom)),
@@ -8422,13 +8422,16 @@ function tblLayout(spec, p){
     if(c.chips){ if(!c.chips.length) return {h:lh, none:true}; const fl = flow(c.chips, w); return {fl:fl, h:fl.lines*chipH + (fl.lines-1)*gap}; }
     const ls = wrap(c.t, w, c.b ? fb : f); return {ls:ls, h:Math.max(1,ls.length)*lh}; }));
   const rowHs = cells.map(r=>Math.max(...r.map(c=>c.h)) + vp*2);
-  const hdrH = lh + vp*2 + 2, availH = p.h - pad*2 - hdrH;
+  /* légende : les initiales des droits présents dans le tableau, avec leur sens (CT, L, L+É) */
+  const lg = {}; spec.rows.forEach(r=>r.forEach(c=>{ if(c.chips) c.chips.forEach(q=>{ if(q.tag) lg[q.tag] = {tag:q.tag, leg:q.leg, k:q.k}; }); }));
+  const leg = ['CT','L','L+É'].filter(k=>lg[k]).map(k=>lg[k]), lgH = leg.length ? lh + 12 : 0;
+  const hdrH = lh + vp*2 + 2, availH = p.h - pad*2 - hdrH - lgH;
   const rt = []; let cur = [], used = 0;
   rowHs.forEach((h,i)=>{ if(cur.length && used + h > availH){ rt.push(cur); cur = []; used = 0; } cur.push(i); used += h; });
   if(cur.length || !rt.length) rt.push(cur);
-  const tiles = rt.map((rows,ri)=>({ri:ri, ci:0, rows:rows, w:tot + pad*2, h:hdrH + rows.reduce((s,i)=>s+rowHs[i],0) + pad*2}));
+  const tiles = rt.map((rows,ri)=>({ri:ri, ci:0, rows:rows, w:tot + pad*2, h:hdrH + rows.reduce((s,i)=>s+rowHs[i],0) + pad*2 + lgH}));
   return {kind:'tbl', spec:spec, p:p, fam:fam, f:f, fb:fb, fc:fc, fcb:fcb, pad:pad, cp:cp, vp:vp, lh:lh, chipH:chipH, cpd:cpd, cw:cw, cells:cells, rowHs:rowHs,
-          hdrH:hdrH, tiles:tiles, nr:rt.length, nc:1, nf:spec.rows.length, clip:clip, tw:tw};
+          hdrH:hdrH, leg:leg, lgH:lgH, tiles:tiles, nr:rt.length, nc:1, nf:spec.rows.length, clip:clip, tw:tw};
 }
 function tblDraw(L, n, cv){
   const t = L.tiles[n], pad = L.pad, {INK, MUT, LINE, HEAD, CHIP} = IMG;
@@ -8467,6 +8470,12 @@ function tblDraw(L, n, cv){
   x.moveTo(ox, Math.round(oy+L.hdrH)+.5); x.lineTo(ox+tableW, Math.round(oy+L.hdrH)+.5);
   if(UC.matGrid!=='aucune' && UC.matGrid!=='lignes') xs.forEach(xx=>{ const q = Math.round(xx)+.5; x.moveTo(q, oy); x.lineTo(q, y); });
   x.stroke();
+  if(L.leg.length){                                   /* légende des initiales, sous le tableau */
+    let lx = ox; const ly = y + 8 + L.lh/2; x.textAlign = 'left';
+    x.fillStyle = MUT; x.font = L.f; x.fillText('Légende :', lx, ly); lx += L.tw('Légende :', L.f) + 12;
+    L.leg.forEach(q=>{ x.fillStyle = IMG_TAG[q.k] || INK; x.font = L.fcb; x.fillText(q.tag, lx, ly); lx += L.tw(q.tag, L.fcb);
+      const s = ' : '+q.leg; x.fillStyle = MUT; x.font = L.f; x.fillText(s, lx, ly); lx += L.tw(s, L.f) + 18; });
+  }
 }
 const pngBytes = cv => new Promise((ok,ko)=>cv.toBlob(b=>b ? b.arrayBuffer().then(a=>ok(new Uint8Array(a)),ko) : ko(new Error('image trop grande pour le navigateur')), 'image/png'));
 
