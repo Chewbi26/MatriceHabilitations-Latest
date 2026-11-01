@@ -1229,11 +1229,16 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.0.0';             /* version de l'application : CHANGELOG.md */
-const DATA_FORMAT = 1;                         /* version de la structure du fichier de données */
+const APP_VERSION = '1.1.0';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
-/* MIGR[n](o) fait passer un fichier de données de la structure n à n+1 (aucune pour l'instant) */
+/* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
+   NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
+   au reste du code) et garder ses deux repères de début et de fin.
+   MIGR[n](o) fait passer un fichier de données de la structure n à n+1 (aucune pour l'instant). */
+/*MIGR-DEBUT*/
+const DATA_FORMAT = 1;                         /* version de la structure du fichier de données */
 const MIGR = {};
+/*MIGR-FIN*/
 const fsOK = typeof window.showDirectoryPicker === 'function';
 const $ = id => document.getElementById(id);
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -1358,7 +1363,7 @@ async function boot(){
 }
 /* ce que l'application utilise du chargeur */
 window.MH = {version:APP_VERSION, format:DATA_FORMAT, FORMAT:FORMAT, fsOK:fsOK, js:js, start:start,
-             sites:sites, addSite:addSite, forget:forget, go:go, perm:perm};
+             sites:sites, addSite:addSite, forget:forget, go:go, perm:perm, idbGet:idbGet, idbSet:idbSet};
 boot();
 })();
 </script>
@@ -5825,7 +5830,8 @@ UIP = (()=>{
       case 'file': { const f = MH.src.file + (MH.src.dir ? ' · dossier '+MH.src.dir.name : ' (ouvert sans dossier)');
         return '<div class="r2" style="margin-top:0;align-items:center"><span class="nm" style="flex:1;min-width:0;overflow:hidden;'+
           'text-overflow:ellipsis;white-space:nowrap" title="'+esc(f)+'">'+esc(f)+'</span>'+
-          '<button class="bt sm" data-act="site">'+ic('switch-horizontal')+' Changer…</button></div>'+
+          '<button class="bt sm" data-act="site">'+ic('switch-horizontal')+' Changer…</button>'+
+          '<button class="bt sm" data-act="upd" title="Rechercher et appliquer la dernière version publiée">'+ic('upload')+' Mise à jour…</button></div>'+
           '<div class="note">Application '+esc(MH.version)+' · structure des données '+MH.format+'. L\'Excel porte le nom du fichier de données.</div>'; }
       case 'texts': return '<div class="tl">'+it.keys.map(k=>'<label title="'+esc(TXTDEF[k][0])+'">'+esc(TXTDEF[k][0])+'</label>'+
         '<input class="tx" data-t="'+k+'" maxlength="80" placeholder="'+esc(TXTDEF[k][1])+'" title="Vide : « '+esc(TXTDEF[k][1])+' »">').join('')+'</div>';
@@ -5985,6 +5991,7 @@ UIP = (()=>{
     hide(){ VIEW.shown = false; keep(); sync(); },
     savefile(){ $('dl').click(); },
     site(){ siteDialog(); },
+    upd(){ updateDialog(); },
     preset(b){ const p = PRESETS[+b.dataset.n]; load(p[1], 'préréglage « '+p[0]+' »'); },
     save(){ const n = R.getElementById('svname'), L = LSG('portail-uip-brouillons') || [];
       const name = n.value.trim() || 'Brouillon '+(L.length+1), d = new Date();
@@ -8010,12 +8017,203 @@ $('appVer').title = 'Application '+MH.version+' · structure des données '+MH.f
   (MH.loaded.appVersion ? '\nDonnées enregistrées par la version '+MH.loaded.appVersion+
    (MH.loaded.savedAt ? ' le '+fmt(new Date(MH.loaded.savedAt)) : '') : '');
 
+$('appVer').style.cursor = 'pointer';
+$('appVer').title += '\nCliquer pour rechercher une mise à jour.';
+$('appVer').onclick = ()=>updateDialog();
+
 $('dl').onclick = ()=>saveFile(false);
 $('xl').onclick = ()=>download(buildXlsx(), XLSX_NAME);
 window.addEventListener('focus', checkDisk);
 window.addEventListener('beforeunload',e=>{
   if(!EXPORTED && diffList().length && (fsOK() || !LS_OK)){ e.preventDefault(); e.returnValue=''; }
 });
+
+/* ============================================================================
+   17 bis. MISE À JOUR DE L'APPLICATION
+   Le bouton « Mise à jour » (Réglages d'affichage › Fichier de données, ou clic sur la version en bas du menu)
+   lit la dernière version publiée dans le dépôt public de diffusion (accès Internet seulement à ce moment,
+   jamais au démarrage). Si elle est plus récente, « Mettre à jour » :
+     1. demande le fichier de l'application en cours d'utilisation (le navigateur ne peut pas le deviner) et
+        vérifie qu'il est bien de la version ouverte ;
+     2. lit les fichiers de données des établissements reliés et repère ceux dont la structure est plus
+        ancienne que celle de la nouvelle version (migrations lues dans le bloc MIGR de la nouvelle version) ;
+     3. copie dans sauvegardes\ l'application actuelle (« Matrice Habilitations <version>.html ») et chaque
+        fichier de données à mettre à niveau (« <données>.avant-maj-<ancienne>-vers-<nouvelle>.<horodatage>.bak.json ») ;
+     4. remplace le fichier de l'application, puis met à niveau les fichiers de données.
+   Rien n'est modifié avant la fin des sauvegardes. Si la mise à niveau d'un fichier échoue après le
+   remplacement de l'application, la nouvelle version le met à niveau elle-même à son ouverture (chargeur).
+   Les copies « avant-maj » ne sont jamais supprimées par le ménage des sauvegardes.
+   Sans dossier relié, la nouvelle version est seulement téléchargée.
+   ========================================================================== */
+const UPDATE_URL = 'https://raw.githubusercontent.com/Chewbi26/MatriceHabilitations-Latest/main/Matrice%20Habilitations.html';
+const APP_NAME = 'Matrice Habilitations.html';
+const vcmp = (a,b)=>{ const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+  for(let i=0;i<3;i++){ if((x[i]||0)!==(y[i]||0)) return (x[i]||0)<(y[i]||0) ? -1 : 1; } return 0; };
+
+/* lit une version de l'application : version, structure des données et migrations ; erreur si ce n'est pas l'application */
+function parseApp(html){
+  const v = /const APP_VERSION = '(\d+\.\d+\.\d+)';/.exec(html);
+  const m = /\/\*MIGR-DEBUT\*\/([\s\S]*?)\/\*MIGR-FIN\*\//.exec(html);
+  if(!v || !m || html.indexOf('id="app-code"')<0) throw new Error('ce fichier n\'est pas l\'application « Matrice d\'Habilitations ».');
+  if(/<script id="d-[a-z]+" type="[^"]*">\s*[^\s<]/.test(html)) throw new Error('ce fichier contient des données : ce n\'est pas l\'application seule.');
+  let b;
+  try{ b = new Function(m[1]+'\nreturn {format:DATA_FORMAT, MIGR:MIGR};')(); }
+  catch(e){ throw new Error('les migrations de la nouvelle version sont illisibles ('+(e.message||e)+').'); }
+  if(!(b.format >= 1) || !b.MIGR) throw new Error('structure des données de la nouvelle version illisible.');
+  return {version:v[1], format:b.format, MIGR:b.MIGR};
+}
+async function fetchLatest(){
+  const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), 20000);
+  try{ const r = await fetch(UPDATE_URL, {cache:'no-store', signal:ctl.signal});
+       if(!r.ok) throw new Error('le serveur a répondu '+r.status+'.');
+       return await r.text(); }
+  catch(e){ throw e.name==='AbortError' ? new Error('délai dépassé (20 s).') : e; }
+  finally{ clearTimeout(t); }
+}
+const upShow = h => { const b = $('upBody'); if(b) b.innerHTML = h; };
+
+async function updateDialog(given){
+  openModal('Mise à jour de l\'application',
+    '<div id="upBody" style="padding:16px;line-height:1.6">Recherche de la dernière version publiée…</div>',
+    'Application '+MH.version+' · structure des données '+MH.format, true);
+  const tools = extra => '<div class="tools" style="margin:14px 0 0;padding:0">'+extra+'<span class="sp"></span>'+
+    '<button class="btn" id="upFile">Utiliser un fichier téléchargé…</button></div>';
+  const wire = ()=>{
+    if($('upFile')) $('upFile').onclick = ()=>{ const i = document.createElement('input'); i.type = 'file'; i.accept = '.html,text/html';
+      i.onchange = async()=>{ if(i.files[0]) updateDialog(await i.files[0].text()); }; i.click(); };
+    if($('upRetry')) $('upRetry').onclick = ()=>updateDialog();
+  };
+  let html, app;
+  try{ html = given!=null ? given : await fetchLatest(); app = parseApp(html); }
+  catch(e){
+    upShow('<div class="note w"><b>Impossible de lire la dernière version.</b> '+esc(e.message||e)+'</div>'+
+      '<p>Si le réseau de l\'établissement bloque l\'accès à GitHub, téléchargez '+
+      '<a href="'+UPDATE_URL+'" target="_blank" rel="noopener">le fichier de la dernière version</a> depuis un poste qui y accède, '+
+      'puis choisissez-le ici.</p>'+tools('<button class="btn" id="upRetry">Réessayer</button>'));
+    wire(); return;
+  }
+  const c = vcmp(app.version, MH.version);
+  if(c<=0){
+    upShow('<p>'+(c===0 ? 'Vous utilisez déjà la dernière version publiée (<b>'+esc(MH.version)+'</b>).'
+      : 'La version proposée (<b>'+esc(app.version)+'</b>) est plus ancienne que celle que vous utilisez (<b>'+esc(MH.version)+'</b>) : rien à faire.')+
+      '</p>'+tools('')); wire(); return;
+  }
+  const mig = app.format > MH.format, fs = fsOK();
+  upShow('<p>La version <b>'+esc(app.version)+'</b> est disponible (vous utilisez la <b>'+esc(MH.version)+'</b>).</p>'+
+    (fs ? '<ul style="margin:8px 0 0;padding-left:18px">'+
+      '<li>Le navigateur ne peut pas retrouver seul le fichier de l\'application : <b>vous le choisirez</b> (« '+APP_NAME+' », celui que vous utilisez).</li>'+
+      '<li>Ce fichier est copié dans le dossier <b>sauvegardes</b> (« '+esc(DIR.name)+' ») sous son numéro de version, puis remplacé par la nouvelle version.</li>'+
+      '<li>'+(mig ? 'La structure des données change (de '+MH.format+' à '+app.format+') : chaque fichier de données concerné est <b>sauvegardé au préalable</b> dans le dossier <b>sauvegardes</b>, puis mis à niveau.'
+                  : 'La structure des données est inchangée : aucun fichier de données n\'est modifié.')+'</li>'+
+      '<li>Vos modifications doivent être enregistrées avant la mise à jour. La page se recharge ensuite sur la nouvelle version.</li></ul>'
+    : '<div class="note w">Ce fichier de données est ouvert sans dossier : l\'application ne peut pas se remplacer elle-même. Téléchargez la nouvelle version '+
+      'et mettez-la à la place de l\'ancienne'+(mig ? ' ; les données sont mises à niveau à leur ouverture (gardez une copie du fichier de données avant de l\'enregistrer)' : '')+'.</div>')+
+    tools(fs ? '<button class="btn pr" id="upGo">Mettre à jour…</button><button class="btn" id="upDl">Télécharger seulement</button>'
+             : '<button class="btn pr" id="upDl">Télécharger la nouvelle version</button>'));
+  wire();
+  if($('upGo')) $('upGo').onclick = ()=>applyUpdate(app, html);
+  $('upDl').onclick = ()=>download(new Blob([html],{type:'text/html'}), APP_NAME);
+}
+
+/* le fichier de l'application en cours d'utilisation : mémorisé par le navigateur, sinon à choisir */
+async function appFile(){
+  const good = async h => { try{ if(!(await MH.perm(h,false))) return null;
+    const t = await (await h.getFile()).text(), m = /const APP_VERSION = '(\d+\.\d+\.\d+)';/.exec(t);
+    return m && m[1]===MH.version && t.indexOf('id="app-code"')>=0 ? t : null; }catch(e){ return null; } };
+  const old = await MH.idbGet('appfile');
+  if(old){ const t = await good(old); if(t!=null) return {h:old, t:t}; }
+  if(typeof window.showOpenFilePicker!=='function') throw new Error('ce navigateur ne permet pas de choisir le fichier de l\'application.');
+  let h;
+  try{ [h] = await window.showOpenFilePicker({id:'matrice-app', mode:'readwrite', startIn:DIR, multiple:false,
+        types:[{description:'Application (HTML)', accept:{'text/html':['.html','.htm']}}]}); }
+  catch(e){ if(e.name==='AbortError') return null; throw e; }
+  if(!(await MH.perm(h,true))) throw new Error('le navigateur n\'a pas obtenu le droit de modifier « '+h.name+' ».');
+  const t = await good(h);
+  if(t==null) throw new Error('« '+h.name+' » n\'est pas la version '+MH.version+' de l\'application actuellement ouverte. '+
+    'Choisissez le fichier à partir duquel cette page a été ouverte.');
+  await MH.idbSet('appfile', h);
+  return {h:h, t:t};
+}
+
+async function applyUpdate(app, html){
+  if(BUSY) return;
+  if(!EXPORTED && diffList().length){ alert('Enregistrez d\'abord vos modifications (Ctrl+S), puis relancez la mise à jour.'); return; }
+  const log = [], say = (t,ko)=>{ log.push('<li'+(ko?' style="color:var(--dang)"':'')+'>'+t+'</li>');
+    upShow('<ul style="margin:0;padding-left:18px">'+log.join('')+'</ul>'); };
+  const stop = msg=>{ say('<b>'+msg+'</b> Rien n\'a été modifié.', true);
+    upShow($('upBody').innerHTML+'<div class="tools" style="margin:14px 0 0;padding:0"><button class="btn" data-close="" id="upX">Fermer</button></div>');
+    $('upX').onclick = closeModal; };
+  BUSY = true;
+  try{
+    // 1. le fichier de l'application
+    let af;
+    try{ af = await appFile(); }catch(e){ stop(esc(e.message||e)); return; }
+    if(!af){ updateDialog(html); return; }
+    say('Application actuelle : <b>'+esc(af.h.name)+'</b> (version '+esc(MH.version)+').');
+    if(!(await MH.perm(DIR,true))){ stop('Pas d\'autorisation d\'écrire dans le dossier « '+esc(DIR.name)+' ».'); return; }
+
+    // 2. les fichiers de données à mettre à niveau (essai à blanc : rien n'est encore écrit)
+    const T = [{org:SITE.org, dir:DIR, file:DFILE}];
+    for(const s of await MH.sites()) if(s.code!==SITE.code) T.push({org:s.org, dir:s.dir, file:s.file});
+    const todo = [], later = [];
+    for(const t of T){
+      try{
+        if(t.dir!==DIR && !(await MH.perm(t.dir,true))){ later.push(t.org+' (dossier « '+t.dir.name+' » non autorisé)'); continue; }
+        t.raw = await (await t.dir.getFileHandle(t.file)).getFile().then(f=>f.text());
+        const o = JSON.parse(t.raw);
+        if(!o || o.format!==MH.FORMAT) continue;
+        const v = +o.formatVersion || 0;
+        if(v > app.format){ later.push(t.org+' (structure '+v+' plus récente que celle de la nouvelle version)'); continue; }
+        if(v === app.format) continue;
+        for(let n=v; n<app.format; n++){ if(!app.MIGR[n]) throw new Error('migration '+n+' absente'); app.MIGR[n](o); }
+        o.formatVersion = app.format; o.appVersion = app.version; o.savedAt = new Date().toISOString();
+        t.out = dataText(o); t.from = v; todo.push(t);
+      }catch(e){ stop('Le fichier de données de '+esc(t.org)+' ('+esc(t.file)+') ne peut pas être mis à niveau : '+esc(e.message||e)+'.'); return; }
+    }
+    if(todo.length) say('Mise à niveau des données nécessaire (structure '+MH.format+' → '+app.format+') : '+todo.map(t=>'<b>'+esc(t.org)+'</b>').join(', ')+'.');
+    else say('Structure des données inchangée : aucun fichier de données à mettre à niveau.');
+
+    // 3. sauvegardes (l'application, puis les données) : sans elles, on s'arrête
+    const ts = tsName(new Date());
+    try{
+      const bd = await DIR.getDirectoryHandle('sauvegardes',{create:true});
+      let name = 'Matrice Habilitations '+MH.version+'.html';
+      try{ const ex = await (await bd.getFileHandle(name)).getFile();
+           if(await ex.text()!==af.t) name = 'Matrice Habilitations '+MH.version+' ('+ts+').html'; else name = ''; }
+      catch(e){ if(e.name!=='NotFoundError') throw e; }
+      if(name) await writeFile(bd, name, af.t);
+      say('Application sauvegardée : <span class="mono">sauvegardes\\'+esc(name || 'Matrice Habilitations '+MH.version+'.html')+'</span>.');
+    }catch(e){ console.error(e); stop('La sauvegarde de l\'application a échoué ('+esc(e.message||e)+').'); return; }
+    for(const t of todo){
+      try{
+        const bd = await t.dir.getDirectoryHandle('sauvegardes',{create:true});
+        t.bak = t.file.replace(/\.json$/i,'')+'.avant-maj-'+MH.version+'-vers-'+app.version+'.'+ts+'.bak.json';
+        await writeFile(bd, t.bak, t.raw);
+        say('Données sauvegardées : <span class="mono">sauvegardes\\'+esc(t.bak)+'</span>.');
+      }catch(e){ console.error(e); stop('La sauvegarde des données de '+esc(t.org)+' a échoué ('+esc(e.message||e)+').'); return; }
+    }
+
+    // 4. remplacement de l'application, puis mise à niveau des données
+    try{ const w = await af.h.createWritable(); await w.write(html); await w.close(); }
+    catch(e){ console.error(e); stop('Le fichier de l\'application n\'a pas pu être remplacé ('+esc(e.message||e)+').'); return; }
+    say('Application remplacée par la version <b>'+esc(app.version)+'</b>.');
+    for(const t of todo){
+      try{
+        const now = await (await t.dir.getFileHandle(t.file)).getFile().then(f=>f.text());
+        if(now!==t.raw){ later.push(t.org+' (enregistré par quelqu\'un d\'autre pendant la mise à jour)'); continue; }
+        await writeFile(t.dir, t.file, t.out);
+        say('Données mises à niveau : <b>'+esc(t.org)+'</b> (structure '+t.from+' → '+app.format+').');
+      }catch(e){ console.error(e); later.push(t.org+' ('+(e.message||e)+')'); }
+    }
+    if(later.length) say('À l\'ouverture de la nouvelle version, ces fichiers seront mis à niveau en mémoire (la sauvegarde habituelle se fait à l\'enregistrement) : '+later.map(esc).join(' ; ')+'.', true);
+    upShow($('upBody').innerHTML+'<div class="note" style="margin-top:12px">Mise à jour terminée. Rechargez la page pour utiliser la version '+esc(app.version)+'.</div>'+
+      '<div class="tools" style="margin:14px 0 0;padding:0"><button class="btn pr" id="upReload">Recharger la page</button></div>');
+    $('upReload').onclick = ()=>location.reload();
+  }catch(e){
+    console.error(e);
+    upShow('<div class="note w"><b>La mise à jour a échoué.</b> '+esc(e.message||e)+'</div>');
+  }finally{ BUSY = false; }
+}
 
 /* ============================================================================
    18. EXPORT EXCEL — un vrai .xlsx, sans bibliothèque : un ZIP non compressé
