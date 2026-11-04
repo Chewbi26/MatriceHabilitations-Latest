@@ -1163,7 +1163,7 @@ body.lecture [data-da="st"]{pointer-events:none}
     <div class="mtb no-print">
       <div class="isearch"><i data-ic="search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"></path><path d="M21 21l-6 -6"></path></svg></i><input id="qm" type="search" placeholder="Filtrer les fonctions…" autocomplete="off"></div>
       <select id="mfam" title="Famille"></select>
-      <select id="msec" title="N'afficher que les applications d'une rubrique de la fiche"><option value="">Toutes les rubriques</option></select>
+      <select id="msec" title="N'afficher que les applications d'une rubrique"><option value="">Toutes les rubriques</option></select>
       <div class="isearch"><i data-ic="search"></i><input id="qa" type="search" placeholder="Filtrer les applications…" autocomplete="off" style="width:12rem"></div>
       <div class="mleg" data-ui="codes">
         <details class="help"><summary>Raccourcis clavier</summary><div class="hb">
@@ -1207,6 +1207,7 @@ body.lecture [data-da="st"]{pointer-events:none}
       <button class="btn" data-d="ag">Agendas</button>
       <button class="btn" data-d="dpi">Profils ELAP</button>
       <button class="btn" data-d="apps">Applications</button>
+      <button class="btn" data-d="rub">Rubriques d'applications</button>
     </div>
     <span class="sp"></span>
     <button class="btn" id="dicoPaste" title="Ajouter ou compléter plusieurs lignes d'un coup, copiées dans Excel"><i data-ic="file-spreadsheet"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"></path><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"></path><path d="M8 11h8v7h-8z"></path><path d="M8 15h8"></path><path d="M11 11v7"></path></svg></i> Coller depuis Excel…</button>
@@ -1279,7 +1280,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.4.5';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.4.6';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -1787,7 +1788,8 @@ const DICODEF = {
   eas: {get nom(){ return dpiMod().nom; }, get app(){ return dpiMod().app; }, lib:'Profils du dossier patient', quoi:'numéros 1, 2, 3… (Easily, Axigate…)'},
   uf:  {nom:'', lib:'UF de ces profils'}, ag:{nom:'', lib:'Agendas de ces profils'},
   dpi: {nom:'Profils ELAP', lib:'Profils ELAP', quoi:'numéros 1, 2, 3…'},
-  apps:{nom:'Applications'}
+  apps:{nom:'Applications'},
+  rub:{nom:'Rubriques d\'applications'}
 };
 const dcfg  = k => (DICO.cfg && DICO.cfg[tb(k)]) || {};
 /* Colonnes du dictionnaire des profils numérotés (Easily, Axigate…), réglables (Dictionnaires › Colonnes…)
@@ -1948,10 +1950,10 @@ function diffList(){
     if(!o){ on('Application',a.nom,'—','ajoutée'); return; }
     if(!!o.off!==!!a.off) on('Application '+a.nom,'affichage',o.off?'masquée':'affichée',a.off?'masquée':'affichée');
     if((o.role||'')!==(a.role||'')) on('Application '+a.nom,'rôle',o.role||'automatique',a.role||'automatique');
-    if((o.sec||'')!==(a.sec||'')) on('Application '+a.nom,'rubrique de la fiche',secName(o.sec||secDefault(a.nom)),secName(a.sec||secDefault(a.nom)));
+    if((o.sec||'')!==(a.sec||'')) on('Application '+a.nom,'rubrique',secName(o.sec||secDefault(a.nom)),secName(a.sec||secDefault(a.nom)));
     if(ruleText(o)!==ruleText(a)) on('Application '+a.nom,'valeurs autorisées',ruleText(o),ruleText(a)); });
   if(JSON.stringify(ORIG.sections)!==JSON.stringify(MAT.sections||null))
-    on('Rubriques de la fiche','liste',(ORIG.sections||secDefs()).map(s=>s.nom).join(', '),secDefs().map(s=>s.nom).join(', '));
+    on('Rubriques d\'applications','liste',(ORIG.sections||secDefs()).map(s=>s.nom).join(', '),secDefs().map(s=>s.nom).join(', '));
   /* ordre des colonnes et des lignes (on ne compare que ce qui existe des deux côtés) */
   const ordre = (a,b,k) => { const ka = a.map(x=>x[k]), kb = b.map(x=>x[k]);
     return ka.filter(x=>kb.indexOf(x)>=0).join('\n')!==kb.filter(x=>ka.indexOf(x)>=0).join('\n'); };
@@ -4196,7 +4198,7 @@ function delApp(nom){
   });
 }
 function addApp(){
-  ask('Nouvelle application','Nom de la colonne','',v=>edit('ajout de '+v,()=>{
+  ask('Nouvelle application','Nom de l\'application','',v=>edit('ajout de '+v,()=>{
     if(MAT.apps.some(a=>a.nom===v)){ alert('Une application porte déjà ce nom.'); return false; }
     MAT.apps.push({col:MAT.apps.length+2, nom:v});
   }));
@@ -6710,7 +6712,7 @@ function secEnsure(){ if(!MAT.sections || !MAT.sections.length) MAT.sections = s
 const secOf = a => { const ids = secDefs().map(d=>d.id), s = appRec(a).sec; return s && ids.indexOf(s)>=0 ? s : (ids.indexOf(secDefault(a))>=0 ? secDefault(a) : 'autres'); };
 
 function secAdd(){
-  ask('Nouvelle rubrique de la fiche','Nom de la rubrique','',v=>edit('ajout de la rubrique « '+v+' »',()=>{
+  ask('Nouvelle rubrique d\'applications','Nom de la rubrique','',v=>edit('ajout de la rubrique « '+v+' »',()=>{
     secEnsure();
     if(MAT.sections.some(s=>canon(s.nom)===canon(v))){ alert('Une rubrique porte déjà ce nom.'); return false; }
     let i = 1; while(MAT.sections.some(s=>s.id==='s'+i)) i++;
@@ -6735,13 +6737,11 @@ function secDel(id){
 }
 
 /* ---------- Dictionnaires › Applications ---------- */
-function dicoAppsHTML(){
+function dicoSecsHTML(){
   const defs = secDefs();
-  /* les actions sont à gauche, à côté du nom : sur un écran étroit, elles restent visibles. Les applications
-     se glissent d'une rubrique à l'autre (secDrag, plus bas) ou se rangent d'un clic (secPick). */
-  let h = '<div class="dhd"><b>Rubriques de la fiche</b><span class="hint">Glissez une application vers une autre rubrique, ou cliquez dessus. '+
+  let h = '<div class="dhd"><b>Rubriques d\'applications</b><span class="hint">Glissez une application vers une autre rubrique, ou cliquez dessus. '+
     'L\'ordre et la largeur à l\'écran se règlent dans ⚙ › Fiche fonction.</span>'+
-    '<button class="btn sm" data-da="secadd">'+ic('plus')+' Rubrique</button></div>'+
+    '</div>'+
     '<table><thead><tr><th style="width:118px"></th><th style="width:230px">Rubrique</th><th>Applications</th></tr></thead><tbody>'+
     defs.map((s,i)=>{ const as = APPS.filter(a=>secOf(a)===s.id);
       return '<tr data-sec="'+s.id+'"><td class="act" style="white-space:nowrap;text-align:left">'+
@@ -6753,9 +6753,15 @@ function dicoAppsHTML(){
         (as.length ? as.map(a=>'<span class="p appchip" draggable="true" data-da="secpick" data-k="'+esc(a)+'" title="Glisser vers une autre rubrique, ou cliquer pour la changer">'+
           esc(a)+'</span>').join('') : '<span class="p no">vide : n\'apparaît pas dans la fiche</span>')+'</div></td></tr>';
     }).join('')+'</tbody></table>';
-  h += '<div class="dhd"><b>Applications</b><span class="hint">Une valeur hors règle n\'est pas refusée : le portail prévient et demande. '+
-    'X et ? sont toujours acceptés.</span><button class="btn sm" data-da="appadd">'+ic('plus')+' Application</button></div>'+
-    '<table class="apptab"><thead><tr><th style="width:150px"></th><th style="width:190px">Application</th><th>Rubrique de la fiche</th>'+
+  return h;
+}
+function dicoAppsHTML(){
+  const defs = secDefs();
+  /* les actions sont à gauche, à côté du nom : sur un écran étroit, elles restent visibles. Les applications
+     se glissent d'une rubrique à l'autre (secDrag, plus bas) ou se rangent d'un clic (secPick). */
+  let h = '<div class="dhd"><b>Applications</b><span class="hint">Une valeur hors règle n\'est pas refusée : le portail prévient et demande. '+
+    'X et ? sont toujours acceptés.</span></div>'+
+    '<table class="apptab"><thead><tr><th style="width:150px"></th><th style="width:190px">Application</th><th>Rubrique</th>'+
     '<th title="Compte Windows : contrôle des accès sans compte. Matériel : ne demande pas de compte. '+
       'Profils ELAP Planning : la colonne reliée aux profils. Codes M : la colonne accepte les profils ELAP.">Rôle</th>'+
     '<th>Valeurs autorisées</th><th>Liste / valeurs actuelles</th><th style="width:70px">Fonctions</th></tr></thead><tbody>'+
@@ -8052,7 +8058,7 @@ $('matFind').onclick = () => { if(isLocked()){ lockedMsg(); return; } findReplac
 /* ---------- Dictionnaires › Applications : glisser une application d'une rubrique à l'autre ---------- */
 let SECDRAG = null;
 $('dico').addEventListener('dragstart', ev=>{
-  if(DTAB!=='apps') return;
+  if(DTAB!=='rub') return;
   const c = ev.target.closest && ev.target.closest('.appchip'); if(!c) return;
   SECDRAG = c.dataset.k; ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', SECDRAG);
 });
@@ -8072,10 +8078,10 @@ $('dico').addEventListener('drop', ev=>{
 });
 
 /* ---------- branchement sur l'onglet Dictionnaires ---------- */
-const DTAB6 = {apps:dicoAppsHTML, uf:()=>VUE.uf==='liste' ? nmListHTML('uf') : easGridHTML('uf'),
+const DTAB6 = {apps:dicoAppsHTML, rub:dicoSecsHTML, uf:()=>VUE.uf==='liste' ? nmListHTML('uf') : easGridHTML('uf'),
                                   ag:()=>VUE.ag==='liste' ? nmListHTML('ag') : easGridHTML('ag')};
 /* sans texte à convertir, « Ajouter » crée directement (les listes naissent au premier ajout) */
-const DADD6 = {apps:secAdd, uf:()=>{ if(easLists() || !easTexte()) easAddName('uf'); else easConvert(); },
+const DADD6 = {apps:addApp, rub:secAdd, uf:()=>{ if(easLists() || !easTexte()) easAddName('uf'); else easConvert(); },
                ag:()=>{ if(easLists() || !easTexte()) easAddName('ag'); else easConvert(); }};
 const DACT6 = {
   secadd:()=>secAdd(), appadd:()=>addApp(),
