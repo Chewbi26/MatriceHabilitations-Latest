@@ -230,6 +230,14 @@ table.cvt tr.chg td{background:var(--warn-bg)}
 @media(max-width:800px){#p-donner .dgsel{grid-template-columns:1fr}}
 #p-donner .dgadd .mgrid{margin-top:4px}
 #p-donner .dgsum{margin:12px 0}
+.msel{position:relative}
+.msum{list-style:none;cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:7px 28px 7px 10px;background:var(--card);position:relative;min-height:34px}
+.msum::-webkit-details-marker{display:none}
+.msum::after{content:"▾";position:absolute;right:10px;top:7px;opacity:.6}
+.mpanel{position:absolute;z-index:20;left:0;right:0;max-height:300px;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:8px;margin-top:4px;padding:6px 10px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.mpanel label{display:flex;gap:8px;align-items:center;padding:4px 0;cursor:pointer}
+.mpanel input{width:auto}
+.mfam{font-size:.78em;text-transform:uppercase;letter-spacing:.04em;opacity:.65;margin:6px 0 2px}
 /* pastille de couleur d'une famille (Réglages › Couleurs des familles et applications) */
 .fdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px;flex:none}
 .mlc{display:contents}.mleg .lx svg.i{color:var(--acc)}
@@ -478,7 +486,7 @@ td input.ci{width:100%;border:1px solid var(--acc);background:var(--card);paddin
   min-width:215px;white-space:nowrap;cursor:pointer}
 #mat thead th.f{z-index:4}
 #mat td.f.hl{color:var(--acc)}
-#mat td.c{text-align:center;cursor:cell;min-width:35px;padding:3px 4px}
+#mat td.c{text-align:center;cursor:cell;min-width:28px;padding:3px 2px}
 #mat td.c svg.i{color:var(--acc);width:15px;height:15px;vertical-align:-3px}
 #mat td.c .b{padding:2px 7px}
 #mat td.c.co{color:var(--acc);font-weight:500}
@@ -766,7 +774,7 @@ body.uip-open .hdr .saveinfo{display:none}
 body.mh-vertical #mat th.c{writing-mode:vertical-rl;transform:rotate(180deg);min-width:34px;max-width:none;height:170px;
   white-space:nowrap;text-align:left;padding:6px 3px}
 body.mh-incline #mat thead th{height:150px}
-body.mh-incline #mat th.c{min-width:36px;max-width:36px;white-space:nowrap;padding:0 0 6px;overflow:visible}
+body.mh-incline #mat th.c{min-width:28px;max-width:28px;white-space:nowrap;padding:0 0 6px;overflow:visible}
 body.mh-incline #mat th.c>span{display:inline-block;width:150px;overflow:hidden;text-overflow:ellipsis;
   transform:translate(16px,0) rotate(-55deg);transform-origin:bottom left}
 body.mh-incline #mat table{margin-right:110px}
@@ -973,7 +981,7 @@ body.lecture [data-da="st"]{pointer-events:none}
     
     
     
-  <div class="side-label" data-l="l1">Pilotage</div><button data-p="home" class="on"><i data-ic="home"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h-2l9 -9l9 9h-2"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"></path><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"></path></svg></i><span>Tableau de bord</span></button><button data-p="fonction" class=""><i data-ic="briefcase"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"></path><path d="M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2"></path><path d="M12 12v.01"></path><path d="M3 13a20 20 0 0 0 18 0"></path></svg></i><span>Fonctions</span></button><button data-p="carto" class=""><i data-ic="layout-grid"></i><span>Cartographie</span></button><button data-p="mat" class=""><i data-ic="table"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"></path><path d="M3 10h18"></path><path d="M10 3v18"></path></svg></i><span>Matrice</span></button><button data-p="donner" class=""><i data-ic="key"></i><span>Quel accès donner ?</span></button><button data-p="inverse" class=""><i data-ic="zoom-check"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"></path><path d="M21 21l-6 -6"></path><path d="M7 10l2 2l4 -4"></path></svg></i><span>Qui a accès ?</span></button><button data-p="comp" class=""><i data-ic="git-compare"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M16 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M11 6h5a2 2 0 0 1 2 2v8"></path><path d="M14 9l-3 -3l3 -3"></path><path d="M13 18h-5a2 2 0 0 1 -2 -2v-8"></path><path d="M10 15l3 3l-3 3"></path></svg></i><span>Comparer</span></button><div class="side-label" data-l="l2">Référentiels</div><button data-p="elap" class=""><i data-ic="calendar-time"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.8 21h-6.8a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4"></path><path d="M14 18a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path><path d="M15 3v4"></path><path d="M7 3v4"></path><path d="M3 11h16"></path><path d="M18 16.5v1.5l1 1"></path></svg></i><span>ELAP Planning</span></button><button data-p="dico" class=""><i data-ic="book"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path><path d="M3 6v13"></path><path d="M12 6v13"></path><path d="M21 6v13"></path></svg></i><span>Catalogue</span></button><div class="side-label" data-l="l3">Qualité</div><button data-p="ctrl" class=""><i data-ic="shield-check"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.46 20.85a12 12 0 0 1 -7.96 -14.85a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06"></path><path d="M15 19l2 2l4 -4"></path></svg></i><span>Contrôles</span><span class="bad" id="ctrlBad"></span></button></nav>
+  <div class="side-label" data-l="l1">Habilitations</div><button data-p="home" class="on"><i data-ic="home"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h-2l9 -9l9 9h-2"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"></path><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"></path></svg></i><span>Tableau de bord</span></button><button data-p="fonction" class=""><i data-ic="briefcase"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"></path><path d="M8 7v-2a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v2"></path><path d="M12 12v.01"></path><path d="M3 13a20 20 0 0 0 18 0"></path></svg></i><span>Fonctions</span></button><button data-p="carto" class=""><i data-ic="layout-grid"></i><span>Affectations</span></button><button data-p="mat" class=""><i data-ic="table"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"></path><path d="M3 10h18"></path><path d="M10 3v18"></path></svg></i><span>Matrice</span></button><button data-p="donner" class=""><i data-ic="key"></i><span>Quel accès donner ?</span></button><button data-p="inverse" class=""><i data-ic="zoom-check"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"></path><path d="M21 21l-6 -6"></path><path d="M7 10l2 2l4 -4"></path></svg></i><span>Qui a accès ?</span></button><button data-p="comp" class=""><i data-ic="git-compare"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M16 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M11 6h5a2 2 0 0 1 2 2v8"></path><path d="M14 9l-3 -3l3 -3"></path><path d="M13 18h-5a2 2 0 0 1 -2 -2v-8"></path><path d="M10 15l3 3l-3 3"></path></svg></i><span>Comparer</span></button><div class="side-label" data-l="l2">Configuration</div><button data-p="elap" class=""><i data-ic="calendar-time"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.8 21h-6.8a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4"></path><path d="M14 18a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"></path><path d="M15 3v4"></path><path d="M7 3v4"></path><path d="M3 11h16"></path><path d="M18 16.5v1.5l1 1"></path></svg></i><span>ELAP Planning</span></button><button data-p="dico" class=""><i data-ic="book"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path><path d="M3 6a9 9 0 0 1 9 0a9 9 0 0 1 9 0"></path><path d="M3 6v13"></path><path d="M12 6v13"></path><path d="M21 6v13"></path></svg></i><span>Catalogue</span></button><div class="side-label" data-l="l3">Qualité</div><button data-p="ctrl" class=""><i data-ic="shield-check"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M11.46 20.85a12 12 0 0 1 -7.96 -14.85a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06"></path><path d="M15 19l2 2l4 -4"></path></svg></i><span>Contrôles</span><span class="bad" id="ctrlBad"></span></button></nav>
   <div class="side-foot">
     <button class="btn pr sf-save" id="dl2"><i data-ic="device-floppy"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h10l4 4v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2"></path><path d="M10 14a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path><path d="M14 4v4h-6v-4"></path></svg></i> Enregistrer</button>
     <button class="sf-link" id="uiBtn2"><i data-ic="settings"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.33 4.32c.43 -1.76 2.92 -1.76 3.35 0a1.72 1.72 0 0 0 2.57 1.07c1.54 -.94 3.31 .83 2.37 2.37a1.72 1.72 0 0 0 1.07 2.57c1.76 .43 1.76 2.92 0 3.35a1.72 1.72 0 0 0 -1.07 2.57c.94 1.54 -.83 3.31 -2.37 2.37a1.72 1.72 0 0 0 -2.57 1.07c-.43 1.76 -2.92 1.76 -3.35 0a1.72 1.72 0 0 0 -2.57 -1.07c-1.54 .94 -3.31 -.83 -2.37 -2.37a1.72 1.72 0 0 0 -1.07 -2.57c-1.76 -.43 -1.76 -2.92 0 -3.35a1.72 1.72 0 0 0 1.07 -2.57c-.94 -1.54 .83 -3.31 2.37 -2.37c1 .61 2.3 .07 2.57 -1.07z"></path><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path></svg></i><span>Réglages d'affichage</span></button>
@@ -1174,7 +1182,7 @@ body.lecture [data-da="st"]{pointer-events:none}
 <!-- ================= DICTIONNAIRES ================= -->
 <section class="panel" id="p-carto">
   <div class="ph" data-ui="page">
-    <div class="t"><div class="pre">Fonctions</div><h1>Cartographie</h1>
+    <div class="t"><div class="pre">Fonctions</div><h1>Affectations</h1>
       <div class="sub2">Ce qui est affecté à chaque profil : dossiers des profils de partage, boîtes des profils de messagerie, profils du dossier patient, profils ELAP.</div></div>
   </div>
 </section>
@@ -1269,7 +1277,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.3.0';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.3.1';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -1981,14 +1989,14 @@ function diffList(){
   Object.keys(DICODEF).forEach(k=>{
     if(JSON.stringify(oc[k]||{})!==JSON.stringify(nc[k]||{})) on('Dictionnaire', DICODEF[k].nom || (k==='uf' ? 'UF' : 'Agendas'), show(oc[k]||{}), show(nc[k]||{})); });
   const ocm = 'dpiMod' in oc ? oc.dpiMod : 'easily', ncm = 'dpiMod' in nc ? nc.dpiMod : 'easily';
-  if(ocm!==ncm) on('Catalogue et Cartographie','module dossier patient', dpiNom(ocm), dpiNom(ncm));
+  if(ocm!==ncm) on('Catalogue et Affectations','module dossier patient', dpiNom(ocm), dpiNom(ncm));
   if(JSON.stringify(oc.famAdd||[])!==JSON.stringify(nc.famAdd||[]))
     on('Familles','fonctions additionnelles',(oc.famAdd||[]).join(', ')||'aucune',(nc.famAdd||[]).join(', ')||'aucune');
   if(JSON.stringify(oc.off||[])!==JSON.stringify(nc.off||[]))
-    on('Catalogue et Cartographie','onglets masqués',(oc.off||[]).length ? (oc.off||[]).join(', ') : 'aucun',(nc.off||[]).length ? nc.off.join(', ') : 'aucun');
+    on('Catalogue et Affectations','onglets masqués',(oc.off||[]).length ? (oc.off||[]).join(', ') : 'aucun',(nc.off||[]).length ? nc.off.join(', ') : 'aucun');
   /* groupes AD rapprochés à la main (DICO.ad) */
   const adS = a => plural(Object.keys((a||{}).map||{}).length,'correspondance')+((a||{}).prefix ? ' · préfixe '+a.prefix : '');
-  if(JSON.stringify(ORIG.dico.ad||{})!==JSON.stringify(DICO.ad||{})) on('Catalogue et Cartographie','groupes AD', adS(ORIG.dico.ad), adS(DICO.ad));
+  if(JSON.stringify(ORIG.dico.ad||{})!==JSON.stringify(DICO.ad||{})) on('Catalogue et Affectations','groupes AD', adS(ORIG.dico.ad), adS(DICO.ad));
   /* ELAP */
   const oP={}; ORIG.profils.forEach(p=>oP[p.id]=p);
   DATA.profils.forEach(p=>{
@@ -3059,7 +3067,7 @@ function newFonction(model){
     {k:'fam',  label:'Famille', type:'select', value:model ? model.groupe : (curF() ? curF().groupe : ''),
      options:groupes().map(g=>({v:g, l:g})).concat([{v:NEWFAM, l:'＋ Nouvelle famille…'}])},
     {k:'nfam', label:'Nom de la nouvelle famille', value:''},
-    {k:'fadd', type:'check', label:'Nouvelle famille de fonctions additionnelles (une famille existante garde son réglage)', value:false},
+    {k:'fadd', type:'check', label:'Famille de fonctions additionnelles', value:false},
     {k:'from', label:'Partir des accès de', type:'select', value:model ? String(model.row) : '',
      options:[{v:'',l:'— aucun accès, fonction vide —'}].concat(ordered().map(x=>({v:String(x.row), l:x.nom+' ('+(x.groupe||'sans famille')+')'})))},
     {k:'elap', label:'Profil ELAP Planning', type:'select', wide:true,
@@ -3096,7 +3104,7 @@ function newFonction(model){
     });
     goTab('fonction'); window.scrollTo(0,0);
   });
-  const sync = ()=>{ fm.el.querySelector('#ff-nfam').parentElement.style.display = $('ff-fam').value===NEWFAM ? '' : 'none'; };
+  const sync = ()=>{ const nw = $('ff-fam').value===NEWFAM; fm.el.querySelector('#ff-nfam').parentElement.style.display = nw ? '' : 'none'; $('ff-fadd').parentElement.style.display = nw ? '' : 'none'; };
   $('ff-fam').onchange = sync; sync();
 }
 $('addFonc').onclick = ()=>newFonction(null);
@@ -3158,7 +3166,7 @@ function buildRes(){
     });
     push('Boîte aux lettres',(m.adresse||m.code),plural(codes.length,'profil')+' de messagerie',fns,'',
       {how:'Cette boîte est donnée par un profil de messagerie : pour l\'ajouter à une fonction, donnez-lui un de ces profils '+
-           '(rubrique « Profil de messagerie » de la liste), ou ajoutez la boîte à son profil (Cartographie › Profils messagerie).'});
+           '(rubrique « Profil de messagerie » de la liste), ou ajoutez la boîte à son profil (Affectations › Profils messagerie).'});
   });
   DICO.easily.forEach(e=>{
     const fns = MAT.fonctions.filter(f=>COL_EAS && cellOf(f,COL_EAS)===String(e.num))
@@ -3172,7 +3180,7 @@ function buildRes(){
   const viaEas = test => MAT.fonctions.map(f=>{ const e = COL_EAS && EAS[cellOf(f,COL_EAS)];
     const n = e && test(e); return n ? {f:f, note:'profil '+e.num+(n===true?'':' · '+n)} : null; }).filter(Boolean);
   const howEas = 'Ces accès viennent du profil '+EASN()+' de chaque fonction : ils se modifient dans le profil '+
-                 '(Cartographie › '+EASN()+') ou en changeant le profil de la fonction.';
+                 '(Affectations › '+EASN()+') ou en changeant le profil de la fonction.';
   (DICO.ufs||[]).forEach(u=>{
     const ps = DICO.easily.filter(e=>easHasUf(e,u));
     push('UF '+EASN()+'',u,plural(ps.length,'profil')+' '+EASN()+'',viaEas(e=>easHasUf(e,u)),'',{how:howEas});
@@ -4199,7 +4207,7 @@ $('mgCols').onclick = appsDialog;
    12. ONGLET « DICTIONNAIRES » — tout est modifiable
    ========================================================================== */
 let DTAB = 'part';
-/* Catalogue (éléments nommés) ou Cartographie (affectation aux profils) : un seul bloc, déplacé dans la page du groupe de l'onglet */
+/* Catalogue (éléments nommés) ou Affectations (affectation aux profils) : un seul bloc, déplacé dans la page du groupe de l'onglet */
 const DGRP = {part:'carto', mailp:'carto', eas:'carto', dpi:'carto'};
 const grpOf = t => DGRP[t] || 'dico';
 const cellSpan = (kind,key,fld,val,ph) =>
@@ -4245,12 +4253,12 @@ function dicoCfg(){
     '<option value=""'+(dpiOn()?'':' selected')+'>Aucun</option></select>'+
     '<div class="hint">Le module fixe le nom du dictionnaire des profils, l\'application de la matrice reliée et les colonnes '+
     'd\'origine. Aucun : les onglets du dossier patient sont masqués, leurs données gardées.</div></div>';
-  openModal('Catalogue et Cartographie — noms et liens',
+  openModal('Catalogue et Affectations — noms et liens',
     '<div style="padding:12px 16px">'+modSel+'<table><thead><tr><th style="width:24%">Dictionnaire</th><th style="width:28%">Nom de l\'onglet</th>'+
     '<th>Application où l\'on saisit ses codes</th><th style="width:70px;text-align:center">Afficher</th></tr></thead>'+
     '<tbody>'+rows+'</tbody></table>'+
     '<div class="tools" style="margin:12px 0 0;padding:0"><button class="btn pr" id="dcOk">Valider</button>'+
-    '<button class="btn" id="dcNo">Annuler</button></div></div>', 'Un onglet décoché disparaît du Catalogue, de la Cartographie et de l\'Excel ; '+
+    '<button class="btn" id="dcNo">Annuler</button></div></div>', 'Un onglet décoché disparaît du Catalogue, des Affectations et de l\'Excel ; '+
     'ses données sont gardées.', true);
   $('dcNo').onclick = closeModal;
   $('dcOk').onclick = ()=>{
@@ -4368,6 +4376,33 @@ const dColsUI = k => colsUI({k:k, titre:'Colonnes du dictionnaire « '+dName(k)+
   unite:DCOLS[k].quoi, fiche:null, ficheNum:null});
 $('dicoCols').onclick = () => DTAB==='uf' || DTAB==='ag' ? nmColsUI(DTAB) : DCOLS[DTAB] ? dColsUI(DTAB) : easColsUI();
 
+/* donner un profil à des fonctions depuis le profil (partage, messagerie, dossier patient, codes ELAP, ELAP Planning) :
+   le code est ajouté à la case de la fonction (remplacé pour le dossier patient, qui n'en prend qu'un) */
+const FNBTN = k => '<button class="btn sm" data-da="fnadd" data-k="'+esc(String(k))+'" title="Donner ce profil à des fonctions">+ Fonctions…</button> ';
+function fnAddPicker(kind, key){
+  if(isLocked()){ lockedMsg(); return; }
+  let col = '', code = '', nom = '';
+  {
+    col = kind==='part' ? COL_PART : kind==='mailp' ? COL_MAIL : kind==='eas' ? COL_EAS : COL_M[0];
+    code = kind==='dpi' ? ((DICO.dpi[+key]||{}).code||'') : String(key);
+    nom = code;
+    if(!col){ alert('Aucune colonne de la matrice n\'est reliée à ce dictionnaire (Catalogue › Noms et liens…).'); return; }
+    if(!code || code==='?'){ alert('Donnez d\'abord un code à ce profil.'); return; }
+  }
+  const has = f => splitCodes(cellOf(f,col)).indexOf(code)>=0;
+  const items = ordered().map(f=>{ const cur = cellOf(f,col);
+    return {cat:f.groupe||'', label:f.nom, value:String(f.row), used:has(f),
+            sub:has(f) ? 'a déjà ce profil' : cur && !isX(cur) && !isQ(cur) ? 'actuellement : '+cur : ''}; });
+  openPicker({title:'Donner « '+nom+' » à…', keepOpen:true, items:items, placeholder:'Fonction ou famille…',
+    onPick:(v,it)=>{
+      const g = foncByRow(v); if(!g) return;
+      edit('profil '+code+' donné à '+g.nom, ()=>{
+        if(isMulti(col)) attachCode(g, col, code);
+        else g.cells[col] = code;
+      });
+      it.used = true; it.sub = 'a déjà ce profil';
+    }});
+}
 function renderDico(){
   dicoTabs();
   let h='';
@@ -4383,15 +4418,13 @@ function renderDico(){
     ? fns.map(f=>'<span class="p co jump" data-row="'+f.row+'" style="cursor:pointer">'+esc(f.nom)+'</span>').join('')
     : vide)+'</div></td>';
   if(DTAB==='part'){
-    const avecDoss = dCols('part').some(c=>c.k==='dossiers');
-    h = dHead('part', avecDoss ? '<th style="width:50px">Nb</th>' : '')+
+    h = dHead('part', '')+
       DICO.partages.map(p=>'<tr><td>'+cellSpan('part',p.code,'code',p.code)+'</td>'+
         dCols('part').map(c=>c.k!=='dossiers' ? libre('part',p.code,p,c.k)
           : '<td><div class="chips tight">'+(p.dossiers.length
               ? p.dossiers.map(d=>foldChip(p,d)).join('')
               : '<span class="p q">aucun dossier</span>')+'</div></td>').join('')+
-        (avecDoss ? '<td>'+p.dossiers.length+'</td>' : '')+
-        '<td class="act"><button class="btn sm" data-da="doss" data-k="'+esc(p.code)+'">Dossiers…</button> '+
+        '<td class="act"><button class="btn sm" data-da="doss" data-k="'+esc(p.code)+'">Dossiers…</button> '+FNBTN(p.code)+
         '<button class="btn sm dg" data-da="del" data-k="'+esc(p.code)+'">×</button></td></tr>').join('');
   } else if(DTAB==='doss'){
     h = '<table><thead><tr><th>Dossier partagé</th><th style="width:120px">Profils</th>'+
@@ -4406,8 +4439,7 @@ function renderDico(){
           '<td class="act"><button class="btn sm dg" data-da="del" data-k="'+esc(d)+'">×</button></td></tr>';
       }).join('');
   } else if(DTAB==='mailp'){
-    const avecB = dCols('mailp').some(c=>c.k==='boites');
-    h = dHead('mailp', (avecB ? '<th style="width:50px">Nb</th>' : '')+'<th>Fonctions concernées</th>')+
+    h = dHead('mailp', '<th>Fonctions concernées</th>')+
       (DICO.mailp||[]).map(p=>{
         const b = p.boites || [];
         const fns = COL_MAIL ? MAT.fonctions.filter(f=>splitCodes(cellOf(f,COL_MAIL)).indexOf(p.code)>=0) : [];
@@ -4415,9 +4447,8 @@ function renderDico(){
           dCols('mailp').map(c=>c.k!=='boites' ? libre('mailp',p.code,p,c.k)
             : '<td><div class="chips tight">'+(b.length ? b.map(x=>'<span class="p co">'+esc(boxTxt(x))+'</span>').join('')
                 : '<span class="p q">aucune boîte</span>')+'</div></td>').join('')+
-          (avecB ? '<td>'+b.length+'</td>' : '')+
           fnsChips(fns, '<span class="p q">aucune</span>')+
-          '<td class="act"><button class="btn sm" data-da="boites" data-k="'+esc(p.code)+'">Boîtes…</button> '+
+          '<td class="act"><button class="btn sm" data-da="boites" data-k="'+esc(p.code)+'">Boîtes…</button> '+FNBTN(p.code)+
           '<button class="btn sm dg" data-da="del" data-k="'+esc(p.code)+'">×</button></td></tr>';
       }).join('');
   } else if(DTAB==='mail'){
@@ -4446,7 +4477,7 @@ function renderDico(){
         '<th></th></tr></thead><tbody>'+
       DICO.easily.map(e=>'<tr data-rk="'+esc(e.num)+'"><td>'+GRIP+cellSpan('eas',e.num,'num',e.num)+'</td>'+
         cols.map(c=>'<td>'+td(e,c.k)+'</td>').join('')+
-        '<td class="act"><button class="btn sm dg" data-da="del" data-k="'+esc(e.num)+'">×</button></td></tr>').join('');
+        '<td class="act">'+FNBTN(e.num)+'<button class="btn sm dg" data-da="del" data-k="'+esc(e.num)+'">×</button></td></tr>').join('');
   } else {
     h = dHead('dpi', '<th>Fonctions concernées</th>')+
       DICO.dpi.map((d,i)=>{
@@ -4457,7 +4488,7 @@ function renderDico(){
           dCols('dpi').map(c=>c.k==='nom' ? '<td class="mono">'+cellSpan('dpi',String(i),'nom',d.nom)+'</td>'
             : libre('dpi',String(i),d,c.k)).join('')+
           fnsChips(fns, '<span class="p no">—</span>')+
-          '<td class="act"><button class="btn sm dg" data-da="del" data-k="'+i+'">×</button></td></tr>';
+          '<td class="act">'+FNBTN(i)+'<button class="btn sm dg" data-da="del" data-k="'+i+'">×</button></td></tr>';
       }).join('');
   }
   $('dico').innerHTML = h+'</tbody></table>'; dndPrep();
@@ -4555,6 +4586,7 @@ $('dico').addEventListener('click',e=>{
     if(b.dataset.da==='del') dicoDel(k);
     if(b.dataset.da==='doss') dossPicker(k);
     if(b.dataset.da==='boites') boxPicker(k);
+    if(b.dataset.da==='fnadd') fnAddPicker(DTAB, k);
     return;
   }
   const c = e.target.closest('.cell');
@@ -4746,7 +4778,7 @@ function checks(){
   if(COL_PART) MAT.fonctions.forEach(f=>codesOf(f,COL_PART).forEach(c=>{
     if(!PART[c]) it.push(goF(f,COL_PART,f.nom+' → '+c)); }));
   add('err','fko','Codes de partage introuvables',
-    'La matrice renvoie à un profil de partage absent de la Cartographie (profils de partage).',it);
+    'La matrice renvoie à un profil de partage absent des Affectations (profils de partage).',it);
 
   it = [];
   if(COL_MAIL) MAT.fonctions.forEach(f=>codesOf(f,COL_MAIL).forEach(c=>{
@@ -4902,7 +4934,7 @@ function checks(){
 
   it = (DICO.mailp||[]).filter(p=>!(p.boites||[]).length).map(p=>goD('mailp',p.code,p.libelle||''));
   add('todo','mpvide','Profils de messagerie sans aucune boîte',
-    'Le profil est attribué mais ses boîtes restent à cocher (Cartographie › Profils messagerie › Boîtes…).',it);
+    'Le profil est attribué mais ses boîtes restent à cocher (Affectations › Profils messagerie › Boîtes…).',it);
 
   it = DICO.partages.filter(p=>!p.dossiers.length).map(p=>goD('part',p.code,p.libelle||''));
   add('todo','fvide','Profils de partage sans aucun dossier',
@@ -4910,7 +4942,7 @@ function checks(){
 
   it = DICO.dpi.filter(d=>!d.code || d.code==='?').map(d=>goD('dpi',d.nom,'pas encore de code'));
   add('todo','mabs','Profils ELAP sans numéro',
-    'Profil prévu mais sans numéro utilisable dans la matrice : donnez-lui son numéro dans Cartographie › Profils ELAP.',it);
+    'Profil prévu mais sans numéro utilisable dans la matrice : donnez-lui son numéro dans Affectations › Profils ELAP.',it);
 
   /* ---------------- ménage possible ---------------- */
   it = DICO.partages.filter(p=>!suggested['part|'+p.code] &&
@@ -5306,8 +5338,8 @@ function download(blob, name){
    Clés et valeurs reprennent celles de maquettes/Studio-A1.html : une config copiée
    depuis le Studio se colle telle quelle (Réglages › Configurations › Coller).
    ========================================================================== */
-const NAVDEF = {l1:['Pilotage',null,true], home:['Tableau de bord','home'], fiche:['Fonctions','fonction'], carto:['Cartographie','carto'], mat:['Matrice','mat'],
-  donner:['Quel accès donner ?','donner'], qui:['Qui a accès ?','inverse'], comp:['Comparer','comp'], l2:['Référentiels',null,true], elap:['ELAP Planning','elap'],
+const NAVDEF = {l1:['Habilitations',null,true], home:['Tableau de bord','home'], fiche:['Fonctions','fonction'], carto:['Affectations','carto'], mat:['Matrice','mat'],
+  donner:['Quel accès donner ?','donner'], qui:['Qui a accès ?','inverse'], comp:['Comparer','comp'], l2:['Configuration',null,true], elap:['ELAP Planning','elap'],
   dico:['Catalogue','dico'], l3:['Qualité',null,true], ctrl:['Contrôles','ctrl']};
 const SECID = {poste:'Compte et poste de travail', mails:'Messagerie', f5:'Partages réseau', dossier:'Dossier patient et soins',
   gap:'ELAP — gestion administrative', elap:'ELAP Planning', qual:'Qualité, formation, technique', autres:'Autres applications'};
@@ -5316,7 +5348,7 @@ const HOMEB = {kpis:'Chiffres clés', sante:'Santé de la matrice', todo:'À tra
 /* textes modifiables (Réglages › Nom et logo, Textes et bandeau) : [libellé du réglage, texte d'origine].
    Seuls les textes changés sont stockés (UC.txt) ; txt(k) donne le texte en vigueur. */
 const PAGEH1 = {home:'Tableau de bord', donner:'Quel accès donner ?', inverse:'Qui a accès ?', comp:'Comparer deux fonctions', elap:'ELAP Planning',
-  mat:'Matrice des habilitations', carto:'Cartographie', dico:'Catalogue', ctrl:'Contrôles'};
+  mat:'Matrice des habilitations', carto:'Affectations', dico:'Catalogue', ctrl:'Contrôles'};
 const TXTDEF = {app:['Nom du portail','Matrice d\'Habilitations'], org:['Établissement',SITE.org], logo:['Lettres du logo','CH']};
 Object.keys(NAVDEF).forEach(k=>{ TXTDEF['nav.'+k] = [NAVDEF[k][2] ? 'Groupe « '+NAVDEF[k][0]+' »' : NAVDEF[k][0], NAVDEF[k][0]]; });
 Object.keys(PAGEH1).forEach(p=>{ const k = Object.keys(NAVDEF).find(x=>NAVDEF[x][1]===p); TXTDEF['h1.'+p] = ['Page '+NAVDEF[k][0], PAGEH1[p]]; });
@@ -5325,7 +5357,7 @@ const txt = k => (UC.txt && UC.txt[k]) || TXTDEF[k][1];
 const DEFUI = {
   mode:'auto', primary:'#d9480f', bg:'gris', cards:'mixte', shadow:2, border:10,
   nav:'lateral', navColor:'noir', navW:190, navAct:'barre', brand:'avatar', brandSub:true, navIcons:true, navLabels:true, navBadges:true,
-  navItems:['l1','home','fiche','carto','mat','donner','qui','comp','l2','elap','dico','l3','ctrl'].map(id=>({id:id, on:true})),
+  navItems:['home','l1','mat','donner','qui','l2','fiche','carto','elap','dico','comp','l3','ctrl'].map(id=>({id:id, on:true})),
   header:true, sticky:false, search:'compacte', hdrUndo:true, hdrExcel:true, saveStyle:'icone', status:'entete',
   container:'xl', pretitle:'pretitre', titleSize:20,
   font:'inter', fs:12, lh:1.25, hw:600, cardTitle:'normal',
@@ -5338,7 +5370,7 @@ const DEFUI = {
   ficheMode:'cartes', secs:[{id:'poste',on:true,w:4},{id:'mails',on:true,w:8},{id:'f5',on:true,w:12},{id:'dossier',on:true,w:12},
     {id:'gap',on:true,w:12},{id:'elap',on:true,w:12},{id:'qual',on:true,w:12},{id:'autres',on:true,w:12}],
   secIcon:'primaire', checks:'coches', f5n:31, elapMode:'liste', shared:'discret',
-  matHead:'horizontal', matX:'coche', matCode:'texte', matGrid:'grille', matStripe:false, matCross:true, matGroup:true,
+  matHead:'incline', matX:'coche', matCode:'texte', matGrid:'grille', matStripe:false, matCross:true, matGroup:true,
   matSticky:true, matDense:true, matCount:false, matToolbar:true,
   lock:false,
   /* ajoutés après le Studio : nom, logo, textes, bandeau, codes, couleurs par famille et application */
@@ -5394,7 +5426,6 @@ const UISCHEMA = [
     S('logoH','Taille du logo','range',null,{min:20,max:64,step:1,u:' px',if:c=>c.brand==='image' && !!c.logo}),
     S('brandSub','Afficher l\'établissement','tog')]},
   {id:'textes',t:'Textes et bandeau',i:'pencil',items:[
-    S('_tnav','Noms du menu','texts',null,{keys:Object.keys(NAVDEF).map(k=>'nav.'+k)}),
     S('_th1','Titres des pages','texts',null,{keys:Object.keys(PAGEH1).map(k=>'h1.'+k)}),
     S('banner','Bandeau d\'information','area',null,{ph:'Ex. : Une question ? Service informatique, poste 1234.\nLaissez vide pour ne rien afficher.'}),
     S('bannerTone','Couleur du bandeau','seg',[['info','Bleu'],['alerte','Orange'],['succes','Vert'],['principale','Principale'],['neutre','Neutre']],{if:c=>!!c.banner}),
@@ -5406,8 +5437,7 @@ const UISCHEMA = [
     S('navAct','Élément actif','seg',[['fond','Fond'],['barre','Barre'],['pilule','Plein'],['texte','Texte']]),
     S('navIcons','Icônes','tog',null,{if:c=>c.nav!=='icones'}),
     S('navLabels','Titres de groupe','tog'),
-    S('navBadges','Compteur des contrôles','tog'),
-    S('navItems','Entrées (glisser pour réordonner)','order',null,{names:id=>NAVDEF[id][2]?'— '+txt('nav.'+id)+' —':txt('nav.'+id)})]},
+    S('navBadges','Compteur des contrôles','tog')]},
   {id:'hdr',t:'En-tête',i:'layout-navbar',items:[
     S('header','Barre d\'en-tête','tog'),
     S('sticky','Reste visible au défilement','tog',null,{if:c=>c.header}),
@@ -5484,7 +5514,7 @@ const UISCHEMA = [
   {id:'codes',t:'Codes de la matrice',i:'tag',screen:'mat',items:[
     S('codes','Couleur et légende de chaque code','codes'),
     {c:'note',k:'_codenote',l:'',txt:'Les codes sont regroupés par lettre (F5, F12… = « F »). La légende apparaît dans la barre de filtre '+
-      'de la matrice. Le sens précis de chaque code (F5 = tel profil de partage) se modifie dans Cartographie › Profils de partage.'}]},
+      'de la matrice. Le sens précis de chaque code (F5 = tel profil de partage) se modifie dans Affectations › Profils de partage.'}]},
   {id:'couleurs',t:'Couleurs des familles et applications',i:'color-swatch',items:[
     S('famCols','Familles','colmap',null,{list:()=>groupes().concat(MAT.fonctions.some(f=>!f.groupe)?['Sans famille']:[]),
       auto:'couleur des graphiques', where:'Accueil, matrice et liste des fonctions'}),
@@ -5503,9 +5533,9 @@ const UIITEMS = {}; UISCHEMA.forEach(s=>s.items.forEach(it=>{ it.sec = s.id; UII
 UIITEMS.txt = {k:'txt', l:'Textes', c:'txtobj', sec:'textes'};
 /* mots qui retrouvent un réglage dans la recherche du panneau, en plus de son nom, de sa rubrique et de ses choix */
 const KW = {mode:'sombre clair nuit noir thème', primary:'couleur accent orange teinte', bg:'couleur arrière-plan fond',
-  cards:'encadré cadre', navColor:'couleur barre latérale menu fond', navItems:'masquer cacher ordre déplacer renommer',
+  cards:'encadré cadre', navColor:'couleur barre latérale menu fond',
   brand:'logo image icône hôpital', _tid:'nom titre établissement hôpital renommer', _tlogo:'lettres initiales', logo:'image photo png jpg hôpital',
-  _tnav:'renommer menu libellé', _th1:'renommer titre page libellé', banner:'message annonce information contact bandeau',
+  _th1:'renommer titre page libellé', banner:'message annonce information contact bandeau',
   font:'police écriture caractères', fs:'police grand petit agrandir lisibilité taille', search:'recherche loupe',
   palette:'couleur graphique camembert anneau', home:'blocs masquer ordre tableau de bord', secs:'sections masquer ordre fiche',
   matX:'coche croix x', codes:'couleur légende lettre code x ? sens', famCols:'couleur famille groupe', appCols:'couleur application colonne logiciel',
@@ -5758,14 +5788,14 @@ function applyUI(c){
     'mg-lignes':UC.matGrid==='lignes', 'mg-aucune':UC.matGrid==='aucune', 'm-stripe':UC.matStripe, 'm-aere':!UC.matDense,
     'm-nosticky':!UC.matSticky, 'no-anim':!UC.chartAnim};
   Object.keys(cls).forEach(k=>document.body.classList.toggle(k, !!cls[k]));
-  /* menu : ordre et entrées masquées */
+  /* menu : ordre et noms fixes (DEFUI.navItems, NAVDEF), non personnalisables */
   const nav = document.querySelector('.side-nav');
-  UC.navItems.forEach(x=>{
+  DEFUI.navItems.forEach(x=>{
     const d = NAVDEF[x.id];
     const n = d[2] ? nav.querySelector('.side-label[data-l="'+x.id+'"]') : nav.querySelector('button[data-p="'+d[1]+'"]');
     if(!n) return;
     n.style.display = x.on ? '' : 'none';
-    if(d[2]) n.textContent = txt('nav.'+x.id); else n.querySelector('span:not(.bad)').textContent = txt('nav.'+x.id);
+    if(d[2]) n.textContent = d[0]; else n.querySelector('span:not(.bad)').textContent = d[0];
     nav.appendChild(n);
   });
   /* nom, logo, titres des pages, bandeau */
@@ -6367,10 +6397,13 @@ function renderDonner(){
   $('dgMain').innerHTML = h+(g!==null?'</optgroup>':'');
   const fams = [];
   adds.forEach(f=>{ if(fams.indexOf(f.groupe)<0) fams.push(f.groupe); });
+  const pris = adds.filter(f=>DG.add[f.row]);
   $('dgAdd').innerHTML = !adds.length
     ? '<div class="hint">Aucune famille de fonctions additionnelles. Cochez « Fonctions additionnelles » dans « Renommer ou déplacer la famille… » (fiche d\'une fonction) pour en définir.</div>'
-    : fams.map(fm=>'<div class="mgrid tight">'+adds.filter(f=>f.groupe===fm).map(f=>'<label><input type="checkbox" data-r="'+f.row+'"'+
-        (DG.add[f.row]?' checked':'')+'> '+esc(f.nom)+' <span class="hint">('+esc(fm)+')</span></label>').join('')+'</div>').join('');
+    : '<details class="msel"'+(DG.open?' open':'')+'><summary class="msum">'+(!pris.length ? '<span class="hint">Aucune</span>'
+        : pris.length<=2 ? esc(pris.map(f=>f.nom).join(', ')) : plural(pris.length,'fonction'))+'</summary><div class="mpanel">'+
+      fams.map(fm=>'<div class="mfam">'+esc(fm)+'</div>'+adds.filter(f=>f.groupe===fm).map(f=>'<label><input type="checkbox" data-r="'+f.row+'"'+
+        (DG.add[f.row]?' checked':'')+'> '+esc(f.nom)+'</label>').join('')).join('')+'</div></details>';
   const list = [foncByRow(DG.main)].concat(adds.filter(f=>DG.add[f.row])).filter(Boolean), host = $('dgOut');
   if(!list.length){ host.innerHTML = '<div class="card"><div class="empty">Aucune fonction à afficher.</div></div>'; return; }
   const v = mergeFns(list), n = APPS.filter(a=>cellOf(v,a) && !isQ(cellOf(v,a))).length, nq = APPS.filter(a=>isQ(cellOf(v,a))).length;
@@ -6393,6 +6426,9 @@ function renderDonner(){
     (cards.length ? '<div class="g12">'+cards.join('')+'</div>' : '<div class="card"><div class="empty">Aucun accès renseigné pour cette sélection.</div></div>');
 }
 $('dgMain').onchange = () => { DG.main = +$('dgMain').value; renderDonner(); };
+$('dgAdd').addEventListener('toggle', e => { if(e.target.classList.contains('msel')) DG.open = e.target.open; }, true);
+document.addEventListener('click', e => { const d = document.querySelector('#dgAdd details.msel');
+  if(d && d.open && !d.contains(e.target)){ d.open = false; DG.open = false; } });
 $('dgAdd').onchange = e => { const r = e.target.dataset.r; if(r == null) return; if(e.target.checked) DG.add[r] = 1; else delete DG.add[r]; renderDonner(); };
 $('dgOut').addEventListener('click', e => { if(e.target.closest('.plink')) ficheClick(e); });
 $('dgPrint').onclick = () => window.print();
@@ -8708,7 +8744,7 @@ function imgDialog(){
     $('imPrev').disabled = cur===0; $('imNext').disabled = cur===L.tiles.length-1;
     $('imGo').textContent = L.tiles.length>1 ? 'Télécharger le ZIP ('+L.tiles.length+' images)' : 'Télécharger l\'image';
     $('imNote').textContent = s.mat ? 'Les filtres de la page (famille, rubrique, recherche) s\'appliquent. Plusieurs images : chacune répète les en-têtes de colonnes et la colonne des fonctions.'
-      : 'Colonnes et noms des dictionnaires, comme dans Cartographie › '+s.label+'. Plusieurs images : chacune répète la ligne d\'en-tête. Les droits sont indiqués sur chaque élément.';
+      : 'Colonnes et noms des dictionnaires, comme dans Affectations › '+s.label+'. Plusieurs images : chacune répète la ligne d\'en-tête. Les droits sont indiqués sur chaque élément.';
     const over = L.tiles.some(q=>q.w>p.w || q.h>p.h);
     $('modalInfo').textContent = over ? 'Attention : une image dépasse la taille maximale (une colonne ou une ligne est trop grande pour cette valeur).' : 'Aperçu de l\'image affichée';
   };
