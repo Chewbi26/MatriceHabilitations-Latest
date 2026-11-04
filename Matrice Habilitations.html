@@ -1279,7 +1279,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.4.0';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.4.2';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -1840,6 +1840,7 @@ function EASN(){ return dcfg('eas').nom || DICODEF.eas.nom; }
    du nom du logiciel (EASN, « Axigate ») qui sert dans les phrases, les UF et les agendas. */
 function dName(k){
   if(String(k).indexOf(':')>0) return (tb(k)==='mailp' ? 'Profils ' : 'Boîtes ')+msgOfTab(k).nom;
+  if(k==='mailp' || k==='mail') return (k==='mailp' ? 'Profils ' : 'Boîtes ')+msgName();
   if(k==='eas' && dcfg('eas').tab) return dcfg('eas').tab;
   const n = dcfg(k).nom; if(n) return n;
   if(k==='uf') return 'UF '+EASN();
@@ -1872,10 +1873,12 @@ function dApp(k){
 const tb = k => String(k).split(':')[0];
 const isMsgTab = k => tb(k)==='mailp' || tb(k)==='mail';
 let MSGS = [], MS = null;
+/* nom de la messagerie principale (DICO.cfg.msgNom) : « Profils messagerie », « Boîtes messagerie » */
+const msgName = () => (DICO.cfg && DICO.cfg.msgNom) || 'messagerie';
 const msgRec = id => (DICO.msgs||[]).find(x=>x.id===id);
 function msgBuild(){
   MSGS = [{id:'', P:{}, B:{}, col:'',
-    get nom(){ return dName('mailp'); },
+    get nom(){ return msgName(); },
     get mailp(){ return DICO.mailp || (DICO.mailp = []); }, set mailp(v){ DICO.mailp = v; },
     get mail(){ return DICO.mail || (DICO.mail = []); }, set mail(v){ DICO.mail = v; }}];
   (DICO.msgs||[]).forEach(x=>{ const id = x.id;
@@ -2021,6 +2024,7 @@ function diffList(){
                      c.numNom ? 'n° : '+c.numNom : ''].filter(Boolean).join(' · ') || 'par défaut';
   Object.keys(DICODEF).forEach(k=>{
     if(JSON.stringify(oc[k]||{})!==JSON.stringify(nc[k]||{})) on('Dictionnaire', DICODEF[k].nom || (k==='uf' ? 'UF' : 'Agendas'), show(oc[k]||{}), show(nc[k]||{})); });
+  if((oc.msgNom||'')!==(nc.msgNom||'')) on('Messagerie','nom',oc.msgNom||'messagerie',nc.msgNom||'messagerie');
   const ocm = 'dpiMod' in oc ? oc.dpiMod : 'easily', ncm = 'dpiMod' in nc ? nc.dpiMod : 'easily';
   if(ocm!==ncm) on('Catalogue et Affectations','module dossier patient', dpiNom(ocm), dpiNom(ncm));
   if(JSON.stringify(oc.famAdd||[])!==JSON.stringify(nc.famAdd||[]))
@@ -2668,12 +2672,15 @@ const SECUI = {
 /* une case de la fiche : libellé, valeur ou éditeur, bouton ✎ (data-a : la case, lue par les actions) */
 function itemHTML(f,a,lay){
   const v = cellOf(f,a), ed = EDIT_ALL || EDITING===a;
+  /* plusieurs messageries dans la même rubrique : chaque ligne porte le nom de sa messagerie */
+  const ms0 = msgOfCol(a), multi = !!ms0 && MSGS.filter(m=>m.col).length>1;
+  const kl = multi ? ms0.nom.charAt(0).toUpperCase()+ms0.nom.slice(1) : a;
   const btn = EDIT_ALL ? '<span></span>'
             : '<button class="ed no-print" data-fa="edit" title="'+(ed?'Fermer':'Modifier')+'">'+ic('pencil')+'</button>';
   const da = ' data-a="'+esc(a)+'"';
   if(ed){
     const inner = editorHTML(f,a,EDIT_ALL)+(a===COL_PLAN && v && !isQ(v) ? elapBlock(f) : '');
-    return '<div class="row editing'+(EDIT_ALL&&!v?' off':'')+'"'+da+'><div class="k">'+esc(a)+'</div><div class="v">'+inner+'</div>'+btn+'</div>';
+    return '<div class="row editing'+(EDIT_ALL&&!v?' off':'')+'"'+da+'><div class="k">'+esc(kl)+'</div><div class="v">'+inner+'</div>'+btn+'</div>';
   }
   if(lay==='chk'){
     const mark = !v ? '<span class="av xs mu">–</span>' : isQ(v) ? '<span class="av xs q">?</span>'
@@ -2688,13 +2695,13 @@ function itemHTML(f,a,lay){
     return '<div class="row'+(full?' full':'')+'"'+da+'><div class="k">'+esc(a)+'</div><div class="v">'+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
   }
   /* la colonne principale d'une section (partages, messagerie, ELAP Planning) se passe de libellé */
-  if(v && (a===COL_PART || msgOfCol(a) || a===COL_PLAN)){
+  if(v && (a===COL_PART || (ms0 && !multi) || a===COL_PLAN)){
     const p = a===COL_PLAN && !isQ(v) && FTAB!=='vides' ? elapOf(f) : null;       /* profil ELAP Planning : annoncé comme les autres */
     const head = p ? '<div class="sub-t"><span class="b pr plink" data-elap="'+esc(p.id)+'" title="Ouvrir le profil dans ELAP › Profils">'+esc(p.id)+' — '+esc(p.nom)+'</span> · '+
                      plural(RIGHTS.filter(r=>p.droits[r]).length,'droit')+'</div>' : '';
     return '<div class="row solo"'+da+'><div class="v">'+head+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
   }
-  return '<div class="row"'+da+'><div class="k">'+esc(a)+'</div><div class="v">'+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
+  return '<div class="row"'+da+'><div class="k">'+esc(kl)+'</div><div class="v">'+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
 }
 
 /* contenu d'une section (null si rien à montrer dans l'onglet en cours) ; w : largeur voulue sur 12 */
@@ -4284,7 +4291,7 @@ function dicoTabs(){
 }
 /* une ligne par dictionnaire : ce qu'il contient, son nom, l'application reliée, affiché ou non */
 function dicoCfg(){
-  const KS = ['part','doss','mailp','mail','eas','uf','ag','dpi'];
+  const KS = ['part','doss','eas','uf','ag','dpi'];
   const avant = {};
   const sel = k => '<select data-a="'+k+'"><option value="">— aucune —</option>'+
     APPS.map(a=>'<option value="'+esc(a)+'"'+(a===dApp(k)?' selected':'')+'>'+esc(a)+'</option>').join('')+'</select>';
@@ -4300,31 +4307,33 @@ function dicoCfg(){
     '<div class="hint">Le module fixe le nom du dictionnaire des profils, l\'application de la matrice reliée et les colonnes '+
     'd\'origine. Aucun : les onglets du dossier patient sont masqués, leurs données gardées.</div></div>';
   openModal('Catalogue et Affectations — noms et liens',
-    '<div style="padding:12px 16px">'+modSel+'<table><thead><tr><th style="width:24%">Dictionnaire</th><th style="width:28%">Nom de l\'onglet</th>'+
+    '<div style="padding:12px 16px">'+modSel+
+    '<div style="margin:0 0 12px"><label class="f">Messagerie</label><div id="dcMsg"></div>'+
+    '<button class="btn sm" id="dcMsgAdd">+ Ajouter une messagerie</button></div><table><thead><tr><th style="width:24%">Dictionnaire</th><th style="width:28%">Nom de l\'onglet</th>'+
     '<th>Application où l\'on saisit ses codes</th><th style="width:70px;text-align:center">Afficher</th></tr></thead>'+
     '<tbody>'+rows+'</tbody></table>'+
-    '<div style="margin:16px 0 0"><b>Messageries supplémentaires</b> <span class="hint">0, 1 ou plusieurs : chacune a ses profils, ses boîtes et son application de la matrice</span>'+
-    '<div id="dcMsg" style="margin:6px 0"></div><button class="btn sm" id="dcMsgAdd">+ Ajouter une messagerie</button></div>'+
     '<div class="tools" style="margin:12px 0 0;padding:0"><button class="btn pr" id="dcOk">Valider</button>'+
     '<button class="btn" id="dcNo">Annuler</button></div></div>', 'Un onglet décoché disparaît du Catalogue, des Affectations et de l\'Excel ; '+
     'ses données sont gardées.', true);
   $('dcNo').onclick = closeModal;
-  /* messageries supplémentaires : brouillon MD (avec leurs profils et boîtes), écrit à « Valider » */
-  const MD = cpy(DICO.msgs || []);
-  const msgSync = () => $('modalBody').querySelectorAll('[data-mi]').forEach(r=>{ const x = MD.find(y=>y.id===r.dataset.mi); if(!x) return;
-    x.nom = r.querySelector('[data-mn]').value.trim() || x.nom; x.app = r.querySelector('[data-ma]').value; });
-  const msgDraw = () => { $('dcMsg').innerHTML = !MD.length ? '<div class="hint">Aucune messagerie supplémentaire.</div>' :
-    '<table><thead><tr><th style="width:34%">Nom</th><th>Application de la matrice (rôle : profil de messagerie)</th><th style="width:50px"></th></tr></thead><tbody>'+
-    MD.map(x=>'<tr data-mi="'+esc(x.id)+'"><td><input type="text" data-mn value="'+esc(x.nom||'')+'" autocomplete="off" style="width:100%"></td><td>'+
+  /* messageries : brouillon ML (la principale en premier, puis les supplémentaires avec leurs profils et boîtes), écrit à « Valider » */
+  const ML = [{id:'', nom:msgName(), app:dApp('mailp'), show:!dOffCfg('mailp')}].concat(cpy(DICO.msgs || []));
+  const msgSync = () => $('modalBody').querySelectorAll('[data-mi]').forEach(r=>{ const x = ML.find(y=>y.id===r.dataset.mi); if(!x) return;
+    x.nom = r.querySelector('[data-mn]').value.trim() || x.nom; x.app = r.querySelector('[data-ma]').value;
+    const sh = r.querySelector('[data-ms]'); if(sh) x.show = sh.checked; });
+  const msgDraw = () => { $('dcMsg').innerHTML =
+    '<table><thead><tr><th style="width:34%">Nom</th><th>Application de la matrice (profils de messagerie)</th><th style="width:70px;text-align:center">Afficher</th><th style="width:50px"></th></tr></thead><tbody>'+
+    ML.map(x=>'<tr data-mi="'+esc(x.id)+'"><td><input type="text" data-mn value="'+esc(x.nom||'')+'" autocomplete="off" style="width:100%"></td><td>'+
       '<select data-ma><option value="">— aucune —</option>'+APPS.map(a=>'<option value="'+esc(a)+'"'+(canon(a)===canon(x.app||'')?' selected':'')+'>'+esc(a)+'</option>').join('')+'</select></td>'+
-      '<td><button class="btn sm dg" data-mx="'+esc(x.id)+'" title="Supprimer cette messagerie">×</button></td></tr>').join('')+'</tbody></table>'; };
+      '<td style="text-align:center">'+(x.id ? '' : '<input type="checkbox" data-ms'+(x.show?' checked':'')+'>')+'</td>'+
+      '<td>'+(x.id ? '<button class="btn sm dg" data-mx="'+esc(x.id)+'" title="Supprimer cette messagerie">×</button>' : '')+'</td></tr>').join('')+'</tbody></table>'; };
   msgDraw();
-  $('dcMsgAdd').onclick = () => { msgSync(); let n = 2; while(MD.some(x=>x.id==='m'+n)) n++;
-    MD.push({id:'m'+n, nom:'Messagerie sécurisée', app:'', mailp:[], mail:[]}); msgDraw(); };
+  $('dcMsgAdd').onclick = () => { msgSync(); let n = 2; while(ML.some(x=>x.id==='m'+n)) n++;
+    ML.push({id:'m'+n, nom:'MSSanté', app:'', mailp:[], mail:[]}); msgDraw(); };
   $('dcMsg').onclick = e => { const b = e.target.closest('[data-mx]'); if(!b) return; msgSync();
-    const x = MD.find(y=>y.id===b.dataset.mx); if(!x) return;
+    const x = ML.find(y=>y.id===b.dataset.mx); if(!x) return;
     if((x.mailp||[]).length + (x.mail||[]).length && !confirm('Supprimer la messagerie « '+x.nom+' » avec ses '+plural((x.mailp||[]).length,'profil')+' et ses '+plural((x.mail||[]).length,'boîte')+' ?')) return;
-    MD.splice(MD.indexOf(x),1); msgDraw(); };
+    ML.splice(ML.indexOf(x),1); msgDraw(); };
   $('dcOk').onclick = ()=>{
     msgSync();
     const B = $('modalBody'), v = {}, mod = B.querySelector('#dcMod').value, modChg = mod!==dpiKey();
@@ -4335,7 +4344,17 @@ function dicoCfg(){
       v['s_'+k] = B.querySelector('[data-s="'+k+'"]').checked; });
     closeModal();
     edit('noms et liens des dictionnaires',()=>{
-      if(MD.length) DICO.msgs = MD; else delete DICO.msgs;
+      const ex = ML.slice(1); if(ex.length) DICO.msgs = ex; else delete DICO.msgs;
+      /* messagerie principale : nom, application et affichage de ses deux onglets (profils, boîtes) */
+      { const m0 = ML[0];
+        ['mailp','mail'].forEach(k=>{ dSet(k,'nom',DICODEF[k].nom); });
+        if(m0.app!==dApp('mailp')) dSet('mailp','app', m0.app);
+        const cfg = DICO.cfg = DICO.cfg || {};
+        if(m0.nom && m0.nom!=='messagerie') cfg.msgNom = m0.nom; else delete cfg.msgNom;
+        const off = (cfg.off||[]).filter(x=>x!=='mailp' && x!=='mail');
+        if(!m0.show){ off.push('mailp'); off.push('mail'); }
+        if(off.length) cfg.off = off; else delete cfg.off;
+        if(!Object.keys(cfg).length) delete DICO.cfg; }
       /* nouveau module : ses noms, son application et ses colonnes remplacent les réglages de l'ancien */
       if(modChg){ DICO.cfg = DICO.cfg || {}; DICO.cfg.dpiMod = mod; delete DICO.cfg.eas; }
       KS.forEach(k=>{
