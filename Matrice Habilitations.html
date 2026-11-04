@@ -774,6 +774,8 @@ body.uip-open .hdr .saveinfo{display:none}
 /* ---------- variantes réglables : matrice ---------- */
 body.mh-vertical #mat th.c{writing-mode:vertical-rl;transform:rotate(180deg);min-width:34px;max-width:none;height:170px;
   white-space:nowrap;text-align:left;padding:6px 3px}
+/* les z-index des en-têtes inclinés restent dans la matrice : les fenêtres passent au-dessus */
+#matwrap{isolation:isolate}
 body.mh-incline #mat thead th{height:150px}
 body.mh-incline #mat th.c{min-width:28px;max-width:28px;white-space:nowrap;padding:0 0 6px;overflow:visible}
 body.mh-incline #mat th.c>span{display:inline-block;width:150px;overflow:hidden;text-overflow:ellipsis;
@@ -1184,8 +1186,7 @@ body.lecture [data-da="st"]{pointer-events:none}
 <!-- ================= DICTIONNAIRES ================= -->
 <section class="panel" id="p-carto">
   <div class="ph" data-ui="page">
-    <div class="t"><div class="pre">Fonctions</div><h1>Affectations</h1>
-      <div class="sub2">Ce qui est affecté à chaque profil : dossiers des profils de partage, boîtes des profils de messagerie, profils du dossier patient, profils ELAP.</div></div>
+    <div class="t"><div class="pre">Fonctions</div><h1>Affectations</h1></div>
   </div>
 </section>
 
@@ -1208,7 +1209,6 @@ body.lecture [data-da="st"]{pointer-events:none}
       <button class="btn" data-d="apps">Applications</button>
     </div>
     <span class="sp"></span>
-    <span class="hint">Cliquez sur une valeur pour la corriger</span>
     <button class="btn" id="dicoPaste" title="Ajouter ou compléter plusieurs lignes d'un coup, copiées dans Excel"><i data-ic="file-spreadsheet"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"></path><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"></path><path d="M8 11h8v7h-8z"></path><path d="M8 15h8"></path><path d="M11 11v7"></path></svg></i> Coller depuis Excel…</button>
     <button class="btn" id="dicoEasF" title="Créer d'un coup les profils des fonctions qui n'en ont pas encore, et remplir la matrice"><i data-ic="plus"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></i> Créer pour des fonctions…</button>
     <button class="btn" id="dicoAD" title="Donner à un profil de partage les dossiers des groupes AD d'un utilisateur"><i data-ic="upload"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path><path d="M7 9l5 -5l5 5"></path><path d="M12 4v12"></path></svg></i> Importer des groupes AD…</button>
@@ -1279,7 +1279,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.4.4';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.4.5';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
