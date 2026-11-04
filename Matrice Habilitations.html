@@ -229,6 +229,8 @@ table.cvt tr.chg td{background:var(--warn-bg)}
 #dicoWrap .dnav .seg{display:flex;flex-direction:column;border-radius:var(--r);padding:4px;gap:2px;background:var(--card)}
 #dicoWrap .dnav .seg .btn{justify-content:flex-start;text-align:left;border-radius:var(--rs);white-space:normal;padding:7px 12px}
 #dicoWrap .dnav .dcfgb{justify-content:flex-start}
+/* Affectations : les boutons de chaque ligne (éléments, fonctions) sont toujours visibles */
+#p-carto td.act .btn{opacity:1}
 /* la liste des onglets et le tableau commencent à la même hauteur : la barre d'actions occupe la première ligne, à droite */
 #dicoWrap .dmain{display:contents}
 #dicoWrap .dnav{grid-column:1;grid-row:2}
@@ -1297,7 +1299,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.4.8';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.4.9';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -4529,12 +4531,13 @@ function renderDico(){
     ? fns.map(f=>'<span class="p co jump" data-row="'+f.row+'" style="cursor:pointer">'+esc(f.nom)+'</span>').join('')
     : vide)+'</div></td>';
   if(DTAB==='part'){
-    h = dHead('part', '')+
+    h = dHead('part', '<th>Fonctions concernées</th>')+
       DICO.partages.map(p=>'<tr><td>'+cellSpan('part',p.code,'code',p.code)+'</td>'+
         dCols('part').map(c=>c.k!=='dossiers' ? libre('part',p.code,p,c.k)
           : '<td><div class="chips tight">'+(p.dossiers.length
               ? p.dossiers.map(d=>foldChip(p,d)).join('')
               : '<span class="p q">aucun dossier</span>')+'</div></td>').join('')+
+        fnsChips(COL_PART ? MAT.fonctions.filter(f=>splitCodes(cellOf(f,COL_PART)).indexOf(p.code)>=0) : [], '<span class="p q">aucune</span>')+
         '<td class="act"><button class="btn sm" data-da="doss" data-k="'+esc(p.code)+'">Dossiers…</button> '+FNBTN(p.code)+
         '<button class="btn sm dg" data-da="del" data-k="'+esc(p.code)+'">×</button></td></tr>').join('');
   } else if(DTAB==='doss'){
@@ -4585,10 +4588,12 @@ function renderDico(){
                       : cellSpan('eas',e.num,k,e[k]==null ? '' : String(e[k]));
     h = easConvertBanner()+'<table><thead><tr><th style="width:50px">'+esc(easNumNom())+'</th>'+
         cols.map(c=>'<th'+(c.k==='uf'||c.k==='agenda' ? '' : ' style="width:170px"')+'>'+esc(c.nom)+'</th>').join('')+
-        '<th></th></tr></thead><tbody>'+
+        '<th>Fonctions concernées</th><th></th></tr></thead><tbody>'+
       DICO.easily.map(e=>'<tr data-rk="'+esc(e.num)+'"><td>'+GRIP+cellSpan('eas',e.num,'num',e.num)+'</td>'+
         cols.map(c=>'<td>'+td(e,c.k)+'</td>').join('')+
-        '<td class="act">'+FNBTN(e.num)+'<button class="btn sm dg" data-da="del" data-k="'+esc(e.num)+'">×</button></td></tr>').join('');
+        fnsChips(COL_EAS ? MAT.fonctions.filter(f=>cellOf(f,COL_EAS)===String(e.num)) : [], '<span class="p q">aucune</span>')+
+        '<td class="act">'+(L ? '<button class="btn sm" data-da="easpk" data-k="'+esc(e.num)+'" data-w="uf">UF…</button> '+
+          '<button class="btn sm" data-da="easpk" data-k="'+esc(e.num)+'" data-w="ag">Agendas…</button> ' : '')+FNBTN(e.num)+'<button class="btn sm dg" data-da="del" data-k="'+esc(e.num)+'">×</button></td></tr>').join('');
   } else {
     h = dHead('dpi', '<th>Fonctions concernées</th>')+
       DICO.dpi.map((d,i)=>{
