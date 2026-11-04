@@ -223,6 +223,19 @@ table.eg tbody tr:hover th.egn{color:var(--acc)}
 table.cvt td{padding:3px 6px;vertical-align:middle}table.cvt .n{text-align:right;color:var(--ink3);width:50px}
 table.cvt input{padding:3px 7px;font-size:12px}
 table.cvt tr.chg td{background:var(--warn-bg)}
+/* Catalogue et Affectations : liste des onglets à gauche (avec « Noms et liens… »), actions et tableau à droite */
+#dicoWrap{display:grid;grid-template-columns:210px minmax(0,1fr);column-gap:16px;row-gap:0;align-items:start}
+#dicoWrap .dnav{flex-direction:column;align-items:stretch;flex-wrap:nowrap;margin:0;gap:10px;position:sticky;top:8px}
+#dicoWrap .dnav .seg{display:flex;flex-direction:column;border-radius:var(--r);padding:4px;gap:2px;background:var(--card)}
+#dicoWrap .dnav .seg .btn{justify-content:flex-start;text-align:left;border-radius:var(--rs);white-space:normal;padding:7px 12px}
+#dicoWrap .dnav .dcfgb{justify-content:flex-start}
+/* la liste des onglets et le tableau commencent à la même hauteur : la barre d'actions occupe la première ligne, à droite */
+#dicoWrap .dmain{display:contents}
+#dicoWrap .dnav{grid-column:1;grid-row:2}
+#dicoWrap .dmain>.tools{grid-column:2;grid-row:1}
+#dicoWrap .dmain>.card{grid-column:2;grid-row:2;min-width:0}
+@media(max-width:900px){#dicoWrap{grid-template-columns:minmax(0,1fr)}#dicoWrap .dnav{position:static;grid-column:1;grid-row:2;margin-bottom:var(--gut)}
+  #dicoWrap .dmain>.tools{grid-column:1;grid-row:1}#dicoWrap .dmain>.card{grid-column:1;grid-row:3}}
 /* famille de fonctions additionnelles, page « Quel accès donner ? » */
 .fadd{margin-left:8px;font-size:.78em;font-weight:500;opacity:.75;font-style:italic}
 #p-donner .ed{display:none}
@@ -1196,7 +1209,7 @@ body.lecture [data-da="st"]{pointer-events:none}
       <div class="sub2">Les éléments nommés : dossiers réseau, boîtes aux lettres, UF, agendas, applications.</div></div>
   </div>
   <div id="dicoWrap">
-  <div class="tools no-print">
+  <div class="tools no-print dnav">
     <div class="seg">
       <button class="btn on" data-d="part">Partages</button>
       <button class="btn" data-d="doss">Dossiers réseau</button>
@@ -1209,15 +1222,19 @@ body.lecture [data-da="st"]{pointer-events:none}
       <button class="btn" data-d="apps">Applications</button>
       <button class="btn" data-d="rub">Rubriques d'applications</button>
     </div>
+    <button class="btn dcfgb" id="dicoCfg" title="Renommer les dictionnaires, les relier à une application, masquer ceux qui ne servent pas"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5 -10.5a2.83 2.83 0 1 0 -4 -4l-10.5 10.5v4"></path><path d="M13.5 6.5l4 4"></path></svg> Noms et liens…</button>
+  </div>
+  <div class="dmain">
+  <div class="tools no-print">
     <span class="sp"></span>
     <button class="btn" id="dicoPaste" title="Ajouter ou compléter plusieurs lignes d'un coup, copiées dans Excel"><i data-ic="file-spreadsheet"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"></path><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z"></path><path d="M8 11h8v7h-8z"></path><path d="M8 15h8"></path><path d="M11 11v7"></path></svg></i> Coller depuis Excel…</button>
     <button class="btn" id="dicoEasF" title="Créer d'un coup les profils des fonctions qui n'en ont pas encore, et remplir la matrice"><i data-ic="plus"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></i> Créer pour des fonctions…</button>
     <button class="btn" id="dicoAD" title="Donner à un profil de partage les dossiers des groupes AD d'un utilisateur"><i data-ic="upload"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"></path><path d="M7 9l5 -5l5 5"></path><path d="M12 4v12"></path></svg></i> Importer des groupes AD…</button>
     <button class="btn" id="dicoCols" title="Renommer, masquer, réordonner, ajouter ou supprimer les colonnes de ce dictionnaire"><i data-ic="layout-grid"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6h-6z"></path><path d="M14 4h6v6h-6z"></path><path d="M4 14h6v6h-6z"></path><path d="M14 14h6v6h-6z"></path></svg></i> Colonnes…</button>
-    <button class="btn" id="dicoCfg" title="Renommer les dictionnaires, les relier à une application, masquer ceux qui ne servent pas"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5 -10.5a2.83 2.83 0 1 0 -4 -4l-10.5 10.5v4"></path><path d="M13.5 6.5l4 4"></path></svg> Noms et liens…</button>
     <button class="btn pr" id="dicoAdd"><i data-ic="plus"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></i> Ajouter</button>
   </div>
   <div class="card"><div class="scroll" style="max-height:72vh"><div id="dico"></div></div></div>
+  </div>
   </div>
 </section>
 
@@ -1280,7 +1297,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.4.6';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.4.8';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
