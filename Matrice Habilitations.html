@@ -1279,7 +1279,7 @@ body.lecture [data-da="st"]{pointer-events:none}
    ========================================================================== */
 (function(){
 "use strict";
-const APP_VERSION = '1.3.2';             /* version de l'application : CHANGELOG.md */
+const APP_VERSION = '1.4.0';             /* version de l'application : CHANGELOG.md */
 const FORMAT = 'matrice-habilitations';
 /* Structure des données et migrations. La mise à jour de l'application (section 17 bis) lit ce bloc dans la
    NOUVELLE version pour mettre à niveau les fichiers de données : il doit rester autonome (aucune référence
@@ -1789,7 +1789,7 @@ const DICODEF = {
   dpi: {nom:'Profils ELAP', lib:'Profils ELAP', quoi:'numéros 1, 2, 3…'},
   apps:{nom:'Applications'}
 };
-const dcfg  = k => (DICO.cfg && DICO.cfg[k]) || {};
+const dcfg  = k => (DICO.cfg && DICO.cfg[tb(k)]) || {};
 /* Colonnes du dictionnaire des profils numérotés (Easily, Axigate…), réglables (Dictionnaires › Colonnes…)
    dans DICO.cfg.eas.cols = [{k, nom, off}], dans l'ordre ; DICO.cfg.eas.numNom renomme la colonne du numéro.
    role, additionnels, uf, agenda sont celles d'origine : on peut les renommer ou les masquer, pas les
@@ -1825,13 +1825,13 @@ const easFiche = c => 'fiche' in c ? c.fiche : (c.k==='uf' || c.k==='agenda' || 
    masquables, colonnes ajoutées (c1, c2…) rangées dans chaque élément. DICO.cfg[k].cols / numNom. */
 const DCOLS = {
   part:{def:[{k:'libelle', nom:'Libellé'}, {k:'dossiers', nom:'Dossiers autorisés'}], num:'Code', rows:()=>DICO.partages, quoi:'profil'},
-  mailp:{def:[{k:'libelle', nom:'Libellé'}, {k:'boites', nom:'Boîtes'}], num:'N°', rows:()=>DICO.mailp, quoi:'profil'},
-  mail:{def:[{k:'adresse', nom:'Adresse'}, {k:'nominative', nom:'Nominative'}], num:'Code', rows:()=>DICO.mail, quoi:'boîte'},
+  mailp:{def:[{k:'libelle', nom:'Libellé'}, {k:'boites', nom:'Boîtes'}], num:'N°', rows:()=>MS.mailp, quoi:'profil'},
+  mail:{def:[{k:'adresse', nom:'Adresse'}, {k:'nominative', nom:'Nominative'}], num:'Code', rows:()=>MS.mail, quoi:'boîte'},
   dpi: {def:[{k:'nom', nom:'Nom du profil'}], num:'N°', rows:()=>DICO.dpi, quoi:'profil'}
 };
 /* profils ELAP : l'ancienne colonne « Statut » (note) n'existe plus, même si un fichier de données la porte encore dans ses colonnes */
-function dCols(k,tout){ let c = dcfg(k).cols || DCOLS[k].def; if(k==='dpi') c = c.filter(x=>x.k!=='note'); return tout ? c : c.filter(x=>!x.off); }
-const dNumNom = k => dcfg(k).numNom || DCOLS[k].num;
+function dCols(k,tout){ let c = dcfg(k).cols || DCOLS[tb(k)].def; if(k==='dpi') c = c.filter(x=>x.k!=='note'); return tout ? c : c.filter(x=>!x.off); }
+const dNumNom = k => dcfg(k).numNom || DCOLS[tb(k)].num;
 /* valeur lisible d'une colonne (UF et agendas : listes ou texte) */
 const easVal = (e,k) => k==='uf' ? ufText(e) : k==='agenda' ? agText(e) : String(e[k]==null ? '' : e[k]);
 /* nom affiché du logiciel des profils numérotés (Easily par défaut) : sert dans tous les libellés */
@@ -1839,6 +1839,7 @@ function EASN(){ return dcfg('eas').nom || DICODEF.eas.nom; }
 /* nom de l'onglet d'un dictionnaire. Profils numérotés du dossier patient : cfg.eas.tab (« Profils Axigate »), distinct
    du nom du logiciel (EASN, « Axigate ») qui sert dans les phrases, les UF et les agendas. */
 function dName(k){
+  if(String(k).indexOf(':')>0) return (tb(k)==='mailp' ? 'Profils ' : 'Boîtes ')+msgOfTab(k).nom;
   if(k==='eas' && dcfg('eas').tab) return dcfg('eas').tab;
   const n = dcfg(k).nom; if(n) return n;
   if(k==='uf') return 'UF '+EASN();
@@ -1863,6 +1864,30 @@ function dApp(k){
   return want ? (APPS.find(a=>canon(a)===canon(want)) || '') : '';
 }
 
+/* Messageries : la principale (DICO.mailp, DICO.mail ; application DICO.cfg.mailp.app) puis les messageries
+   supplémentaires DICO.msgs = [{id, nom, app, mailp:[], mail:[]}], chacune avec ses profils et son catalogue de boîtes.
+   Onglets : 'mailp' et 'mail' (principale), 'mailp:ID' et 'mail:ID' (supplémentaires).
+   MS : la messagerie en cours de traitement ; à fixer (MS = msgOfCol(a), msgOfTab(DTAB)…) avant de lire MS.mailp,
+   MS.mail, MS.col (colonne de la matrice), MS.P (profils par code), MS.B (boîtes par code). */
+const tb = k => String(k).split(':')[0];
+const isMsgTab = k => tb(k)==='mailp' || tb(k)==='mail';
+let MSGS = [], MS = null;
+const msgRec = id => (DICO.msgs||[]).find(x=>x.id===id);
+function msgBuild(){
+  MSGS = [{id:'', P:{}, B:{}, col:'',
+    get nom(){ return dName('mailp'); },
+    get mailp(){ return DICO.mailp || (DICO.mailp = []); }, set mailp(v){ DICO.mailp = v; },
+    get mail(){ return DICO.mail || (DICO.mail = []); }, set mail(v){ DICO.mail = v; }}];
+  (DICO.msgs||[]).forEach(x=>{ const id = x.id;
+    MSGS.push({id:id, P:{}, B:{}, col:'',
+      get nom(){ return (msgRec(id)||{}).nom || 'Messagerie'; },
+      get mailp(){ const r = msgRec(id); return r.mailp || (r.mailp = []); }, set mailp(v){ msgRec(id).mailp = v; },
+      get mail(){ const r = msgRec(id); return r.mail || (r.mail = []); }, set mail(v){ msgRec(id).mail = v; }}); });
+  MS = MSGS[0];
+}
+const msgOfCol = a => a ? (MSGS.find(m=>m.col===a) || null) : null;
+const msgOfTab = t => MSGS.find(m=>m.id===(String(t).split(':')[1]||'')) || MSGS[0];
+const msgTab = (m,b) => m.id ? b+':'+m.id : b;
 function reindex(){
   /* une application masquée (MAT.apps[i].off) garde ses valeurs mais disparaît de partout (matrice, fiche,
      contrôles, Excel…) : tout passe par APPS. Seules les listes de gestion des applications lisent MAT.apps. */
@@ -1875,6 +1900,8 @@ function reindex(){
 
   COL_PART = dApp('part');
   COL_MAIL = dApp('mailp');
+  msgBuild(); MSGS[0].col = COL_MAIL;
+  (DICO.msgs||[]).forEach((x,i)=>{ MSGS[i+1].col = x.app ? (APPS.find(a=>canon(a)===canon(x.app)) || '') : ''; });
   COL_EAS  = dApp('eas');
   COL_PLAN = APPS.find(a=>appRole(a)==='plan') || '';
   COL_AD   = APPS.find(a=>appRole(a)==='ad') || '';
@@ -1882,15 +1909,14 @@ function reindex(){
      gestion administrative (sauf SOFI), et celles qui contiennent encore un ancien code « M12 ».
      Les numéros n'ont plus de lettre : un nombre seul ne suffit plus à reconnaître une colonne ELAP,
      et les colonnes des autres dictionnaires (partages, messagerie, profils numérotés) en sont exclues. */
-  const gap = SECTIONS.find(s=>s[2]==='gap'), autres = [COL_PART, COL_MAIL, COL_EAS, COL_PLAN].filter(Boolean);
+  const gap = SECTIONS.find(s=>s[2]==='gap'), autres = [COL_PART, COL_EAS, COL_PLAN].concat(MSGS.map(m=>m.col)).filter(Boolean);
   COL_M    = APPS.filter(a=>autres.indexOf(a)<0 && (MAT.fonctions.some(f=>/^M\d/.test(cellOf(f,a))) || appRole(a)==='m' ||
                           (gap && gap[1].indexOf(a)>=0 && !/SOFI/i.test(a) && appRole(a)!=='none')));
   MATERIEL = APPS.filter(a=>appRole(a)==='mat');
 
   PART={}; MAILS={}; MAILP={}; EAS={}; DPIS={}; PBY={};
   DICO.partages.forEach(p=>PART[p.code]=p);
-  DICO.mail.forEach(m=>MAILS[m.code]=m);
-  (DICO.mailp||[]).forEach(p=>MAILP[p.code]=p);
+  MSGS.forEach(m=>{ m.mail.forEach(b=>m.B[b.code]=b); m.mailp.forEach(p=>m.P[p.code]=p); });
   DICO.easily.forEach(e=>EAS[String(e.num)]=e);
   DICO.dpi.forEach(d=>{ if(!d.code||d.code==='?') return; (DPIS[d.code]=DPIS[d.code]||[]).push(d); });
   DATA.profils.forEach(p=>PBY[canon(p.nom)]=p);
@@ -1962,9 +1988,14 @@ function diffList(){
   const dk = k => DCOLS[k].def.map(c=>c.k).concat(dCols(k,true).map(c=>c.k).filter(x=>!DCOLS[k].def.some(d=>d.k===x)));
   cmpList('Profil de partage', ORIG.dico.partages, DICO.partages, 'code', dk('part'),
           (fd,p)=>fd==='dossiers' ? p.dossiers.map(d=>foldTxt(p,d)).join(', ') : p[fd]);
-  cmpList('Profil de messagerie', ORIG.dico.mailp||[], DICO.mailp||[], 'code', dk('mailp'),
-          (fd,p)=>fd==='boites' ? mpBoxes(p) : p[fd]);
-  cmpList('Boîte', ORIG.dico.mail, DICO.mail, 'code', dk('mail'));
+  const msgS = l => (l||[]).map(x=>x.id+' '+(x.nom||'')+(x.app ? ' ('+x.app+')' : '')).join(', ') || 'aucune';
+  if(msgS(ORIG.dico.msgs)!==msgS(DICO.msgs)) on('Messageries','supplémentaires', msgS(ORIG.dico.msgs), msgS(DICO.msgs));
+  MSGS.forEach(ms=>{ MS = ms;
+    const om = ms.id ? ((ORIG.dico.msgs||[]).find(x=>x.id===ms.id) || {}) : ORIG.dico, sfx = ms.id ? ' '+ms.nom : '';
+    cmpList('Profil de messagerie'+sfx, om.mailp||[], MS.mailp, 'code', dk('mailp'),
+            (fd,p)=>fd==='boites' ? mpBoxes(p) : p[fd]);
+    cmpList('Boîte'+sfx, om.mail||[], MS.mail, 'code', dk('mail')); });
+  MS = MSGS[0];
   cmpList('Profil ELAP', ORIG.dico.dpi, DICO.dpi, 'code', dk('dpi'));
   cmpList('Profil '+EASN()+'', ORIG.dico.easily, DICO.easily, 'num',
           easDef().map(c=>c.k).concat(easCols(true).map(c=>c.k).filter(k=>!isEasStd(k))),
@@ -2430,17 +2461,17 @@ function dropFamille(g, cible, after){
 /* items proposés dans le sélecteur pour une colonne à code */
 function codeItems(a){
   if(a===COL_PART) return DICO.partages.map(p=>({label:p.code+' — '+(p.libelle||''), sub:plural(p.dossiers.length,'dossier'), value:p.code}));
-  if(a===COL_MAIL) return (DICO.mailp||[]).map(p=>({label:p.code+' — '+(p.libelle||''), sub:mpBoxes(p)||'aucune boîte', value:p.code}));
+  if(msgOfCol(a)){ MS = msgOfCol(a); return MS.mailp.map(p=>({label:p.code+' — '+(p.libelle||''), sub:mpBoxes(p)||'aucune boîte', value:p.code})); }
   if(a===COL_EAS)  return DICO.easily.map(e=>({label:String(e.num), sub:e.role||'', value:String(e.num)}));
   if(COL_M.indexOf(a)>=0) return Object.keys(DPIS).map(c=>({label:c, sub:DPIS[c].map(x=>x.nom).join(' / '), value:c}));
   return null;
 }
 /* messagerie : un seul profil par fonction (le profil regroupe ses boîtes) */
 const isMulti = a => a===COL_PART || COL_M.indexOf(a)>=0;
-const kindOf  = a => a===COL_PART ? 'profil de partage' : a===COL_MAIL ? 'profil de messagerie' :
+const kindOf  = a => a===COL_PART ? 'profil de partage' : msgOfCol(a) ? 'profil de messagerie' :
                      a===COL_EAS ? 'profil '+EASN()+'' : 'profil ELAP';
 /* une boîte du catalogue, en clair ; un profil de messagerie : ses boîtes */
-const boxTxt = c => { const m = MAILS[c];
+const boxTxt = c => { const m = MS.B[c];
   return !m ? c+' (boîte inconnue)' : (/nominative/i.test(m.adresse||'') ? 'boîte nominative' : (m.adresse||c)); };
 const mpBoxes = p => ((p && p.boites) || []).map(boxTxt).join(', ');
 const mpSub = p => [p.libelle||'', mpBoxes(p) || 'aucune boîte'].filter(Boolean).join(' · ');
@@ -2557,12 +2588,12 @@ function partView(v){
 }
 function mailView(v){
   return splitCodes(v).map(c=>{
-    const p = MAILP[c];
+    const p = MS.P[c];
     if(!p) return '<div class="det"><span class="b dg">'+esc(c)+'</span> aucun profil de ce numéro dans les profils de messagerie</div>';
     const b = p.boites || [];
-    return '<div class="sub-t"><span class="b pr plink" data-dico="mailp" data-dk="'+esc(c)+'">'+esc(c)+' — '+esc(p.libelle||'')+'</span> · '+plural(b.length,'boîte')+'</div>'+
+    return '<div class="sub-t"><span class="b pr plink" data-dico="'+msgTab(MS,'mailp')+'" data-dk="'+esc(c)+'">'+esc(c)+' — '+esc(p.libelle||'')+'</span> · '+plural(b.length,'boîte')+'</div>'+
       (!b.length ? '<span class="b q">aucune boîte listée</span>' : '<div class="mlist">'+b.map(x=>{
-        const m = MAILS[x];
+        const m = MS.B[x];
         if(!m) return '<div class="mi"><div>Boîte inconnue</div><span class="b dg">'+esc(x)+'</span></div>';
         const nom = /nominative/i.test(m.adresse||'');
         return '<div class="mi"><div><div>'+(nom ? 'Boîte nominative' : esc(m.adresse||x))+'</div>'+
@@ -2588,7 +2619,7 @@ function view(f,a,v){
   if(!v) return '<span class="p no">—</span>';
   if(isQ(v)) return '<span class="b q">à confirmer</span>';
   if(a===COL_PART) return partView(v);
-  if(a===COL_MAIL) return mailView(v);
+  if(msgOfCol(a)){ MS = msgOfCol(a); return mailView(v); }
   if(a===COL_EAS)  return f && f.virt ? splitCodes(v).map(easView).join('<hr class="dgsep">') : easView(v);
   if(a===COL_PLAN) return elapBlock(f);
   if(COL_M.indexOf(a)>=0 && /^\d/.test(v)) return splitCodes(v).map(c=>{
@@ -2657,7 +2688,7 @@ function itemHTML(f,a,lay){
     return '<div class="row'+(full?' full':'')+'"'+da+'><div class="k">'+esc(a)+'</div><div class="v">'+view(f,a,v)+noteHTML(f,a)+'</div>'+btn+'</div>';
   }
   /* la colonne principale d'une section (partages, messagerie, ELAP Planning) se passe de libellé */
-  if(v && (a===COL_PART || a===COL_MAIL || a===COL_PLAN)){
+  if(v && (a===COL_PART || msgOfCol(a) || a===COL_PLAN)){
     const p = a===COL_PLAN && !isQ(v) && FTAB!=='vides' ? elapOf(f) : null;       /* profil ELAP Planning : annoncé comme les autres */
     const head = p ? '<div class="sub-t"><span class="b pr plink" data-elap="'+esc(p.id)+'" title="Ouvrir le profil dans ELAP › Profils">'+esc(p.id)+' — '+esc(p.nom)+'</span> · '+
                      plural(RIGHTS.filter(r=>p.droits[r]).length,'droit')+'</div>' : '';
@@ -2912,7 +2943,7 @@ $('qf').addEventListener('input',renderFList);
 function createFor(row,a){
   const tg = {row:row, a:a};
   if(a===COL_PART) newPartage(tg);
-  else if(a===COL_MAIL) newMail(tg);
+  else if(msgOfCol(a)){ MS = msgOfCol(a); newMail(tg); }
   else if(a===COL_EAS) newEasily(tg);
   else newDpi(tg);
 }
@@ -2951,43 +2982,44 @@ function newPartage(tg){
 }
 /* nouveau profil de messagerie : ses boîtes, cochées dans le catalogue ou créées à la volée */
 function newMail(tg){
-  const f = tgF(tg);
-  const fm = form('Nouveau profil de messagerie'+lblFor(tg), [
-    {k:'code', label:'N°', value:nextCode('', (DICO.mailp||[]).map(p=>p.code))},
+  const f = tgF(tg), ms = MS;
+  const fm = form('Nouveau profil de messagerie'+(ms.id ? ' — '+ms.nom : '')+lblFor(tg), [
+    {k:'code', label:'N°', value:nextCode('', (ms.mailp||[]).map(p=>p.code))},
     {k:'lib',  label:'Libellé', value:f ? f.nom : ''},
     {k:'from', label:'Partir des boîtes de', type:'select', value:'',
-     options:[{v:'',l:'— aucun —'}].concat((DICO.mailp||[]).map(p=>({v:p.code, l:p.code+' — '+(p.libelle||'')})))},
-    {k:'bx',   label:'Boîtes', type:'checks', value:[], options:DICO.mail.map(m=>({v:m.code, l:boxTxt(m.code)}))},
+     options:[{v:'',l:'— aucun —'}].concat((ms.mailp||[]).map(p=>({v:p.code, l:p.code+' — '+(p.libelle||'')})))},
+    {k:'bx',   label:'Boîtes', type:'checks', value:[], options:ms.mail.map(m=>({v:m.code, l:boxTxt(m.code)}))},
     {k:'nb',   label:'Nouvelles boîtes à créer', wide:true, hint:'Adresses séparées par des virgules. Elles sont ajoutées au catalogue des boîtes.'}
   ], v=>{
     if(!v.code) return 'Le numéro est obligatoire.';
-    if((DICO.mailp||[]).some(p=>p.code===v.code)) return 'Le profil n° '+v.code+' existe déjà.';
+    if((ms.mailp||[]).some(p=>p.code===v.code)) return 'Le profil n° '+v.code+' existe déjà.';
     const nb = v.nb.split(',').map(x=>x.trim()).filter(Boolean);
     edit('création du profil de messagerie '+v.code+lblFor(tg),()=>{
-      DICO.mailp = DICO.mailp || [];
+      ms.mailp = ms.mailp || [];
       const bx = v.bx.slice();
-      nb.forEach(adr=>{ let m = DICO.mail.find(x=>canon(x.adresse)===canon(adr));
-        if(!m){ m = {code:nextCode('', DICO.mail.map(x=>x.code)), nominative:'O', adresse:adr}; DICO.mail.push(m); }
+      nb.forEach(adr=>{ let m = ms.mail.find(x=>canon(x.adresse)===canon(adr));
+        if(!m){ m = {code:nextCode('', ms.mail.map(x=>x.code)), nominative:'O', adresse:adr}; ms.mail.push(m); }
         if(bx.indexOf(m.code)<0) bx.push(m.code); });
-      DICO.mailp.push({code:v.code, libelle:v.lib, boites:mpSort(bx)});
+      ms.mailp.push({code:v.code, libelle:v.lib, boites:mpSort(bx, ms)});
       const g = tgF(tg); if(g) attachCode(g,tg.a,v.code);
     });
   }, true);
   $('ff-from').onchange = ()=>{
-    const p = (DICO.mailp||[]).find(x=>x.code===$('ff-from').value);
+    const p = (ms.mailp||[]).find(x=>x.code===$('ff-from').value);
     fm.el.querySelectorAll('#ff-bx input').forEach(i=>i.checked = !!p && (p.boites||[]).indexOf(i.value)>=0);
   };
 }
 /* les boîtes d'un profil, dans l'ordre du catalogue */
-const mpSort = l => l.sort((a,b)=>DICO.mail.findIndex(m=>m.code===a)-DICO.mail.findIndex(m=>m.code===b));
+const mpSort = (l, ms) => l.sort((a,b)=>ms.mail.findIndex(m=>m.code===a)-ms.mail.findIndex(m=>m.code===b));
 /* nouvelle boîte du catalogue (onglet Boîtes aux lettres) */
 function newBox(){
-  form('Nouvelle boîte aux lettres', [
+  const ms = MS;
+  form('Nouvelle boîte aux lettres'+(ms.id ? ' — '+ms.nom : ''), [
     {k:'adr',  label:'Adresse', value:'', hint:'ex. service@'+(SITE.domaine||'…')}
   ], v=>{
     if(!v.adr) return 'L\'adresse est obligatoire.';
-    const nc = nextCode('', DICO.mail.map(m=>m.code));
-    edit('création de la boîte '+v.adr,()=>{ DICO.mail.push({code:nc, nominative:'O', adresse:v.adr}); });
+    const nc = nextCode('', ms.mail.map(m=>m.code));
+    edit('création de la boîte '+v.adr,()=>{ ms.mail.push({code:nc, nominative:'O', adresse:v.adr}); });
   });
 }
 function newEasily(tg){
@@ -3152,24 +3184,27 @@ function buildRes(){
            'Les fonctions y accèdent par leur profil ; retirer l\'accès à une fonction retire le profil, donc tous ses dossiers.',
        add:{dossier:d}});
   });
-  (DICO.mailp||[]).forEach(p=>{
-    const fns = MAT.fonctions.filter(f=>COL_MAIL && splitCodes(cellOf(f,COL_MAIL)).indexOf(p.code)>=0)
-                             .map(f=>({f:f,note:'profil '+p.code,a:COL_MAIL,codes:[p.code]}));
-    push('Profil de messagerie',p.code+' — '+(p.libelle||''),plural((p.boites||[]).length,'boîte'),fns,
+  MSGS.forEach(ms=>{ MS = ms; const sfx = ms.id ? ' '+ms.nom : '';
+  ms.mailp.forEach(p=>{
+    const fns = MAT.fonctions.filter(f=>ms.col && splitCodes(cellOf(f,ms.col)).indexOf(p.code)>=0)
+                             .map(f=>({f:f,note:'profil '+p.code,a:ms.col,codes:[p.code]}));
+    push('Profil de messagerie'+sfx,p.code+' — '+(p.libelle||''),plural((p.boites||[]).length,'boîte'),fns,
       '<div class="chips tight">'+(p.boites||[]).map(x=>'<span class="p co">'+esc(boxTxt(x))+'</span>').join('')+'</div>',
-      COL_MAIL ? {add:{cols:[COL_MAIL], code:p.code}} : null);
+      ms.col ? {add:{cols:[ms.col], code:p.code}} : null);
   });
-  DICO.mail.forEach(m=>{
-    const codes = (DICO.mailp||[]).filter(p=>(p.boites||[]).indexOf(m.code)>=0).map(p=>p.code);
+  ms.mail.forEach(m=>{
+    const codes = ms.mailp.filter(p=>(p.boites||[]).indexOf(m.code)>=0).map(p=>p.code);
     const fns = [];
-    if(COL_MAIL) MAT.fonctions.forEach(f=>{
-      const c = splitCodes(cellOf(f,COL_MAIL)).filter(x=>codes.indexOf(x)>=0);
-      if(c.length) fns.push({f:f,note:'profil '+c.join(', '),a:COL_MAIL,codes:c});
+    if(ms.col) MAT.fonctions.forEach(f=>{
+      const c = splitCodes(cellOf(f,ms.col)).filter(x=>codes.indexOf(x)>=0);
+      if(c.length) fns.push({f:f,note:'profil '+c.join(', '),a:ms.col,codes:c});
     });
-    push('Boîte aux lettres',(m.adresse||m.code),plural(codes.length,'profil')+' de messagerie',fns,'',
+    push('Boîte aux lettres'+sfx,(m.adresse||m.code),plural(codes.length,'profil')+' de messagerie',fns,'',
       {how:'Cette boîte est donnée par un profil de messagerie : pour l\'ajouter à une fonction, donnez-lui un de ces profils '+
            '(rubrique « Profil de messagerie » de la liste), ou ajoutez la boîte à son profil (Affectations › Profils messagerie).'});
   });
+  });
+  MS = MSGS[0];
   DICO.easily.forEach(e=>{
     const fns = MAT.fonctions.filter(f=>COL_EAS && cellOf(f,COL_EAS)===String(e.num))
                              .map(f=>({f:f,note:'profil '+e.num,a:COL_EAS,codes:[String(e.num)]}));
@@ -4131,6 +4166,7 @@ function renameApp(nom){
     if(MAT.apps.some(a=>a.nom===v)){ alert('Une application porte déjà ce nom.'); return false; }
     /* un dictionnaire relié à cette colonne le reste (codes F, B, profils numérotés) */
     ['part','mail','eas'].forEach(k=>{ if(dApp(k)===nom) dSet(k,'app',v); });
+    (DICO.msgs||[]).forEach(x=>{ if(canon(x.app)===canon(nom)) x.app = v; });
     /* son rôle (deviné d'après le nom tant qu'il n'est pas choisi) ne change pas avec le nom */
     MAT.apps.forEach(a=>{ if(a.nom!==nom) return;
       if(!('role' in a) && appRoleDef(nom)!==appRoleDef(v)) a.role = appRoleDef(nom) || 'none';
@@ -4211,13 +4247,21 @@ $('mgCols').onclick = appsDialog;
 let DTAB = 'part';
 /* Catalogue (éléments nommés) ou Affectations (affectation aux profils) : un seul bloc, déplacé dans la page du groupe de l'onglet */
 const DGRP = {part:'carto', mailp:'carto', eas:'carto', dpi:'carto'};
-const grpOf = t => DGRP[t] || 'dico';
+const grpOf = t => DGRP[tb(t)] || 'dico';
 const cellSpan = (kind,key,fld,val,ph) =>
   '<span class="cell" data-e="'+kind+'" data-k="'+esc(key)+'" data-f="'+fld+'">'+
   (val ? esc(val) : '<span class="p no">'+(ph||'—')+'</span>')+'</span>';
 
 /* onglets du dictionnaire : nom réglé, masqués s'ils ne servent pas dans ce portail */
 function dicoTabs(){
+  if(isMsgTab(DTAB) && !MSGS.some(m=>m.id===(String(DTAB).split(':')[1]||''))) DTAB = tb(DTAB);
+  const seg = document.querySelector('#dicoWrap .tools .seg');
+  seg.querySelectorAll('button.xt').forEach(x=>x.remove());
+  MSGS.slice(1).forEach(m=>['mail','mailp'].forEach(k=>{
+    const ref = seg.querySelector('button[data-d="'+k+'"]'), x = document.createElement('button');
+    x.className = 'btn xt'; x.dataset.d = msgTab(m,k); x.onclick = ()=>{ DTAB = x.dataset.d; renderDico(); };
+    let at = ref; while(at.nextElementSibling && at.nextElementSibling.classList.contains('xt')) at = at.nextElementSibling;
+    at.after(x); }));
   const bs = [...document.querySelectorAll('#dicoWrap .tools button[data-d]')];
   const g0 = grpOf(DTAB);
   bs.forEach(b=>{ b.textContent = dName(b.dataset.d); b.style.display = dOff(b.dataset.d) || grpOf(b.dataset.d)!==g0 ? 'none' : ''; });
@@ -4231,8 +4275,8 @@ function dicoTabs(){
     if(on) goTab(g, true);
   }
   bs.forEach(b=>b.classList.toggle('on', b.dataset.d===DTAB));
-  $('dicoCols').style.display = DTAB==='eas' || DCOLS[DTAB] || ((DTAB==='uf' || DTAB==='ag') && VUE[DTAB]==='liste') ? '' : 'none';
-  $('dicoPaste').style.display = DIMP[DTAB] ? '' : 'none';
+  $('dicoCols').style.display = DTAB==='eas' || DCOLS[tb(DTAB)] || ((DTAB==='uf' || DTAB==='ag') && VUE[DTAB]==='liste') ? '' : 'none';
+  $('dicoPaste').style.display = DIMP[tb(DTAB)] ? '' : 'none';
   $('dicoAD').style.display = DTAB==='part' ? '' : 'none';
   $('dicoEasF').style.display = DTAB==='eas' ? '' : 'none';
   const nOff = bs.filter(b=>dOff(b.dataset.d) && grpOf(b.dataset.d)===g).length;
@@ -4259,11 +4303,30 @@ function dicoCfg(){
     '<div style="padding:12px 16px">'+modSel+'<table><thead><tr><th style="width:24%">Dictionnaire</th><th style="width:28%">Nom de l\'onglet</th>'+
     '<th>Application où l\'on saisit ses codes</th><th style="width:70px;text-align:center">Afficher</th></tr></thead>'+
     '<tbody>'+rows+'</tbody></table>'+
+    '<div style="margin:16px 0 0"><b>Messageries supplémentaires</b> <span class="hint">0, 1 ou plusieurs : chacune a ses profils, ses boîtes et son application de la matrice</span>'+
+    '<div id="dcMsg" style="margin:6px 0"></div><button class="btn sm" id="dcMsgAdd">+ Ajouter une messagerie</button></div>'+
     '<div class="tools" style="margin:12px 0 0;padding:0"><button class="btn pr" id="dcOk">Valider</button>'+
     '<button class="btn" id="dcNo">Annuler</button></div></div>', 'Un onglet décoché disparaît du Catalogue, des Affectations et de l\'Excel ; '+
     'ses données sont gardées.', true);
   $('dcNo').onclick = closeModal;
+  /* messageries supplémentaires : brouillon MD (avec leurs profils et boîtes), écrit à « Valider » */
+  const MD = cpy(DICO.msgs || []);
+  const msgSync = () => $('modalBody').querySelectorAll('[data-mi]').forEach(r=>{ const x = MD.find(y=>y.id===r.dataset.mi); if(!x) return;
+    x.nom = r.querySelector('[data-mn]').value.trim() || x.nom; x.app = r.querySelector('[data-ma]').value; });
+  const msgDraw = () => { $('dcMsg').innerHTML = !MD.length ? '<div class="hint">Aucune messagerie supplémentaire.</div>' :
+    '<table><thead><tr><th style="width:34%">Nom</th><th>Application de la matrice (rôle : profil de messagerie)</th><th style="width:50px"></th></tr></thead><tbody>'+
+    MD.map(x=>'<tr data-mi="'+esc(x.id)+'"><td><input type="text" data-mn value="'+esc(x.nom||'')+'" autocomplete="off" style="width:100%"></td><td>'+
+      '<select data-ma><option value="">— aucune —</option>'+APPS.map(a=>'<option value="'+esc(a)+'"'+(canon(a)===canon(x.app||'')?' selected':'')+'>'+esc(a)+'</option>').join('')+'</select></td>'+
+      '<td><button class="btn sm dg" data-mx="'+esc(x.id)+'" title="Supprimer cette messagerie">×</button></td></tr>').join('')+'</tbody></table>'; };
+  msgDraw();
+  $('dcMsgAdd').onclick = () => { msgSync(); let n = 2; while(MD.some(x=>x.id==='m'+n)) n++;
+    MD.push({id:'m'+n, nom:'Messagerie sécurisée', app:'', mailp:[], mail:[]}); msgDraw(); };
+  $('dcMsg').onclick = e => { const b = e.target.closest('[data-mx]'); if(!b) return; msgSync();
+    const x = MD.find(y=>y.id===b.dataset.mx); if(!x) return;
+    if((x.mailp||[]).length + (x.mail||[]).length && !confirm('Supprimer la messagerie « '+x.nom+' » avec ses '+plural((x.mailp||[]).length,'profil')+' et ses '+plural((x.mail||[]).length,'boîte')+' ?')) return;
+    MD.splice(MD.indexOf(x),1); msgDraw(); };
   $('dcOk').onclick = ()=>{
+    msgSync();
     const B = $('modalBody'), v = {}, mod = B.querySelector('#dcMod').value, modChg = mod!==dpiKey();
     if(modChg && DICO.cfg && DICO.cfg.eas && !confirm('Changer de module DPI remet à l\'origine le nom, l\'application reliée '+
       'et les colonnes du dictionnaire des profils (les profils sont gardés). Continuer ?')) return;
@@ -4272,6 +4335,7 @@ function dicoCfg(){
       v['s_'+k] = B.querySelector('[data-s="'+k+'"]').checked; });
     closeModal();
     edit('noms et liens des dictionnaires',()=>{
+      if(MD.length) DICO.msgs = MD; else delete DICO.msgs;
       /* nouveau module : ses noms, son application et ses colonnes remplacent les réglages de l'ancien */
       if(modChg){ DICO.cfg = DICO.cfg || {}; DICO.cfg.dpiMod = mod; delete DICO.cfg.eas; }
       KS.forEach(k=>{
@@ -4373,10 +4437,11 @@ const nmColsUI = w => colsUI({k:w, titre:'Colonnes des '+(w==='uf' ? 'UF' : 'age
   cols:nmCols(w,true), defaut:NM[w].def, num:nmNomNom(w), numDef:NM[w].nom, numQuoi:'nom '+(w==='uf' ? 'de l\'UF' : 'de l\'agenda'),
   rows:()=>Object.values(DICO[NM[w].info]||{}), unite:NM[w].quoi, fiche:c=>c.fiche===true, ficheNum:nmFicheNom(w)});
 /* partages, messagerie, profils ELAP : pas de case « Fiche » (leur affichage dans la fiche ne change pas) */
-const dColsUI = k => colsUI({k:k, titre:'Colonnes du dictionnaire « '+dName(k)+' »', label:'colonnes du dictionnaire '+dName(k),
-  cols:dCols(k,true), defaut:DCOLS[k].def, num:dNumNom(k), numDef:DCOLS[k].num, numQuoi:'code', rows:DCOLS[k].rows,
-  unite:DCOLS[k].quoi, fiche:null, ficheNum:null});
-$('dicoCols').onclick = () => DTAB==='uf' || DTAB==='ag' ? nmColsUI(DTAB) : DCOLS[DTAB] ? dColsUI(DTAB) : easColsUI();
+const dColsUI = k => { const b = tb(k); if(isMsgTab(k)) MS = msgOfTab(k);
+  colsUI({k:b, titre:'Colonnes du dictionnaire « '+dName(k)+' »', label:'colonnes du dictionnaire '+dName(k),
+  cols:dCols(b,true), defaut:DCOLS[b].def, num:dNumNom(b), numDef:DCOLS[b].num, numQuoi:'code', rows:DCOLS[b].rows,
+  unite:DCOLS[b].quoi, fiche:null, ficheNum:null}); };
+$('dicoCols').onclick = () => DTAB==='uf' || DTAB==='ag' ? nmColsUI(DTAB) : DCOLS[tb(DTAB)] ? dColsUI(DTAB) : easColsUI();
 
 /* donner un profil à des fonctions depuis le profil (partage, messagerie, dossier patient, codes ELAP, ELAP Planning) :
    le code est ajouté à la case de la fonction (remplacé pour le dossier patient, qui n'en prend qu'un) */
@@ -4385,7 +4450,7 @@ function fnAddPicker(kind, key){
   if(isLocked()){ lockedMsg(); return; }
   let col = '', code = '', nom = '';
   {
-    col = kind==='part' ? COL_PART : kind==='mailp' ? COL_MAIL : kind==='eas' ? COL_EAS : COL_M[0];
+    col = kind==='part' ? COL_PART : tb(kind)==='mailp' ? msgOfTab(kind).col : kind==='eas' ? COL_EAS : COL_M[0];
     code = kind==='dpi' ? ((DICO.dpi[+key]||{}).code||'') : String(key);
     nom = code;
     if(!col){ alert('Aucune colonne de la matrice n\'est reliée à ce dictionnaire (Catalogue › Noms et liens…).'); return; }
@@ -4407,6 +4472,7 @@ function fnAddPicker(kind, key){
 }
 function renderDico(){
   dicoTabs();
+  if(isMsgTab(DTAB)) MS = msgOfTab(DTAB);
   let h='';
   /* onglets Applications, UF et agendas : section 25 */
   if(DTAB6[DTAB]){ $('dico').innerHTML = DTAB6[DTAB](); dndPrep(); return; }
@@ -4440,11 +4506,11 @@ function renderDico(){
           '<td>'+(nf?nf:'<span class="p q">0</span>')+'</td>'+
           '<td class="act"><button class="btn sm dg" data-da="del" data-k="'+esc(d)+'">×</button></td></tr>';
       }).join('');
-  } else if(DTAB==='mailp'){
+  } else if(tb(DTAB)==='mailp'){
     h = dHead('mailp', '<th>Fonctions concernées</th>')+
-      (DICO.mailp||[]).map(p=>{
+      (MS.mailp||[]).map(p=>{
         const b = p.boites || [];
-        const fns = COL_MAIL ? MAT.fonctions.filter(f=>splitCodes(cellOf(f,COL_MAIL)).indexOf(p.code)>=0) : [];
+        const fns = MS.col ? MAT.fonctions.filter(f=>splitCodes(cellOf(f,MS.col)).indexOf(p.code)>=0) : [];
         return '<tr><td>'+cellSpan('mailp',p.code,'code',p.code)+'</td>'+
           dCols('mailp').map(c=>c.k!=='boites' ? libre('mailp',p.code,p,c.k)
             : '<td><div class="chips tight">'+(b.length ? b.map(x=>'<span class="p co">'+esc(boxTxt(x))+'</span>').join('')
@@ -4453,13 +4519,13 @@ function renderDico(){
           '<td class="act"><button class="btn sm" data-da="boites" data-k="'+esc(p.code)+'">Boîtes…</button> '+FNBTN(p.code)+
           '<button class="btn sm dg" data-da="del" data-k="'+esc(p.code)+'">×</button></td></tr>';
       }).join('');
-  } else if(DTAB==='mail'){
+  } else if(tb(DTAB)==='mail'){
     h = '<table><thead><tr>'+
       dCols('mail').map(c=>'<th'+(c.k==='adresse'||c.k==='nom' ? ' style="width:240px"' : c.k==='note' ? ' style="width:130px"' : '')+'>'+
         esc(c.nom)+'</th>').join('')+'<th style="width:120px">Profils</th><th>Fonctions concernées</th><th></th></tr></thead><tbody>'+
-      DICO.mail.map(m=>{
-        const codes = (DICO.mailp||[]).filter(p=>(p.boites||[]).indexOf(m.code)>=0).map(p=>p.code);
-        const fns = COL_MAIL ? MAT.fonctions.filter(f=>splitCodes(cellOf(f,COL_MAIL)).some(c=>codes.indexOf(c)>=0)) : [];
+      MS.mail.map(m=>{
+        const codes = (MS.mailp||[]).filter(p=>(p.boites||[]).indexOf(m.code)>=0).map(p=>p.code);
+        const fns = MS.col ? MAT.fonctions.filter(f=>splitCodes(cellOf(f,MS.col)).some(c=>codes.indexOf(c)>=0)) : [];
         return '<tr>'+
           dCols('mail').map(c=>libre('mail',m.code,m,c.k)).join('')+
           '<td>'+(codes.length ? '<div class="chips tight">'+codes.map(c=>'<span class="p co">'+esc(c)+'</span>').join('')+'</div>'
@@ -4496,6 +4562,7 @@ function renderDico(){
   $('dico').innerHTML = h+'</tbody></table>'; dndPrep();
 }
 function dicoSet(kind,key,fld,v){
+  if(kind==='mailp' || kind==='mail') MS = msgOfTab(DTAB);
   if(DSET6[kind]){ DSET6[kind](key,fld,v); renderDico(); return; }      /* UF, agendas, rubriques : section 25 */
   const labels = {part:'profil de partage',doss:'dossier',mailp:'profil de messagerie',mail:'boîte',eas:'profil '+EASN()+'',dpi:'profil ELAP'};
   /* Changer le numéro d'un profil ELAP doit se répercuter dans la matrice, comme pour les autres profils.
@@ -4537,22 +4604,22 @@ function dicoSet(kind,key,fld,v){
       adInvRename(key, v);
     }
     else if(kind==='mailp'){
-      const p = (DICO.mailp||[]).find(x=>x.code===key); if(!p) return false;
+      const p = (MS.mailp||[]).find(x=>x.code===key); if(!p) return false;
       if(fld==='code'){
-        if(!v || (v!==key && DICO.mailp.some(x=>x.code===v))) return false;
-        if(COL_MAIL) MAT.fonctions.forEach(f=>{
-          const c = splitCodes(cellOf(f,COL_MAIL));
-          const i = c.indexOf(key); if(i>=0){ c[i]=v; f.cells[COL_MAIL]=c.join(','); }
+        if(!v || (v!==key && MS.mailp.some(x=>x.code===v))) return false;
+        if(MS.col) MAT.fonctions.forEach(f=>{
+          const c = splitCodes(cellOf(f,MS.col));
+          const i = c.indexOf(key); if(i>=0){ c[i]=v; f.cells[MS.col]=c.join(','); }
         });
       }
       if(fld==='boites') return false;          /* les boîtes se cochent (bouton « Boîtes… ») */
       p[fld] = v;
     }
     else if(kind==='mail'){
-      const m = DICO.mail.find(x=>x.code===key); if(!m) return false;
+      const m = MS.mail.find(x=>x.code===key); if(!m) return false;
       if(fld==='code'){
-        if(!v || (v!==key && DICO.mail.some(x=>x.code===v))) return false;
-        (DICO.mailp||[]).forEach(p=>{ const i = (p.boites||[]).indexOf(key); if(i>=0) p.boites[i] = v; });
+        if(!v || (v!==key && MS.mail.some(x=>x.code===v))) return false;
+        (MS.mailp||[]).forEach(p=>{ const i = (p.boites||[]).indexOf(key); if(i>=0) p.boites[i] = v; });
       }
       m[fld] = v;
     }
@@ -4579,6 +4646,7 @@ function dicoSet(kind,key,fld,v){
   renderDico();                                 /* si la saisie a été refusée, efface le champ ouvert */
 }
 $('dico').addEventListener('click',e=>{
+  if(isMsgTab(DTAB)) MS = msgOfTab(DTAB);
   const j = e.target.closest('.jump');
   if(j){ gotoFonction(j.dataset.row); return; }
   const b = e.target.closest('[data-da]');
@@ -4606,6 +4674,7 @@ $('dico').addEventListener('click',e=>{
   };
 });
 function dicoDel(k){
+  if(isMsgTab(DTAB)) MS = msgOfTab(DTAB);
   if(DTAB==='part'){
     if(!confirm('Supprimer le profil de partage « '+k+' » ?')) return;
     edit('suppression du profil '+k,()=>{ DICO.partages = DICO.partages.filter(p=>p.code!==k); });
@@ -4617,15 +4686,15 @@ function dicoDel(k){
       DICO.partages.forEach(p=>{ p.dossiers = p.dossiers.filter(d=>d!==k); pClean(p); });
       adInvRename(k, '');
     });
-  } else if(DTAB==='mailp'){
-    const n = COL_MAIL ? MAT.fonctions.filter(f=>splitCodes(cellOf(f,COL_MAIL)).indexOf(k)>=0).length : 0;
+  } else if(tb(DTAB)==='mailp'){
+    const n = MS.col ? MAT.fonctions.filter(f=>splitCodes(cellOf(f,MS.col)).indexOf(k)>=0).length : 0;
     if(!confirm('Supprimer le profil de messagerie n° '+k+' ?'+(n?'\n'+plural(n,'fonction')+' le citent encore dans la matrice.':''))) return;
-    edit('suppression du profil de messagerie '+k,()=>{ DICO.mailp = DICO.mailp.filter(p=>p.code!==k); });
-  } else if(DTAB==='mail'){
-    const n = (DICO.mailp||[]).filter(p=>(p.boites||[]).indexOf(k)>=0).length;
+    edit('suppression du profil de messagerie '+k,()=>{ MS.mailp = MS.mailp.filter(p=>p.code!==k); });
+  } else if(tb(DTAB)==='mail'){
+    const n = (MS.mailp||[]).filter(p=>(p.boites||[]).indexOf(k)>=0).length;
     if(!confirm('Supprimer la boîte « '+k+' » ?'+(n?'\nElle sera retirée de '+plural(n,'profil')+' de messagerie.':''))) return;
-    edit('suppression de la boîte '+k,()=>{ DICO.mail = DICO.mail.filter(m=>m.code!==k);
-      (DICO.mailp||[]).forEach(p=>{ p.boites = (p.boites||[]).filter(x=>x!==k); }); });
+    edit('suppression de la boîte '+k,()=>{ MS.mail = MS.mail.filter(m=>m.code!==k);
+      (MS.mailp||[]).forEach(p=>{ p.boites = (p.boites||[]).filter(x=>x!==k); }); });
   } else if(DTAB==='eas'){
     if(!confirm('Supprimer le profil '+EASN()+' n° '+k+' ?')) return;
     edit('suppression du profil '+EASN()+' '+k,()=>{
@@ -4638,12 +4707,13 @@ function dicoDel(k){
 }
 /* cocher les boîtes d'un profil de messagerie (comme les dossiers d'un profil de partage, sans droit) */
 function boxPicker(code){
-  const p = (DICO.mailp||[]).find(x=>x.code===code); if(!p) return;
+  const ms = MS;
+  const p = (ms.mailp||[]).find(x=>x.code===code); if(!p) return;
   const info = () => plural((p.boites||[]).length,'boîte')+' cochée'+((p.boites||[]).length>1?'s':'');
   const draw = ()=>{
     const q = '<div style="padding:0 16px 8px"><input type="text" id="bpFilter" placeholder="Filtrer les adresses…" style="width:100%;padding:6px 10px;border:1px solid var(--line);border-radius:var(--rs);background:var(--card)"></div>'+
-      DICO.mail.map(m=>'<div class="drrow" data-bf="'+esc(boxTxt(m.code).toLowerCase())+'"><label><input type="checkbox" data-b="'+esc(m.code)+'"'+
-      ((p.boites||[]).indexOf(m.code)>=0?' checked':'')+'> '+esc(boxTxt(m.code))+'</label></div>').join('');
+      ms.mail.map(m=>'<div class="drrow" data-bf="'+esc((MS = ms, boxTxt(m.code)).toLowerCase())+'"><label><input type="checkbox" data-b="'+esc(m.code)+'"'+
+      ((p.boites||[]).indexOf(m.code)>=0?' checked':'')+'> '+esc((MS = ms, boxTxt(m.code)))+'</label></div>').join('');
     openModal('Boîtes du profil '+code+' — '+(p.libelle||''), '<div class="mgrid">'+q+'</div>'+
       '<div style="padding:0 16px 14px"><button class="btn sm" id="boxAdd">+ Nouvelle boîte</button></div>', info(), true);
     if($('bpFilter')) $('bpFilter').oninput = e=>{ const v=e.target.value.toLowerCase();
@@ -4653,16 +4723,16 @@ function boxPicker(code){
       const b = c.dataset.b;
       edit('boîtes du profil de messagerie '+code,()=>{
         p.boites = p.boites || [];
-        if(c.checked){ if(p.boites.indexOf(b)<0) p.boites.push(b); mpSort(p.boites); }
+        if(c.checked){ if(p.boites.indexOf(b)<0) p.boites.push(b); mpSort(p.boites, ms); }
         else p.boites = p.boites.filter(x=>x!==b);
       });
       $('modalInfo').textContent = info();
     };
     $('boxAdd').onclick = ()=>ask('Nouvelle boîte aux lettres','Adresse','',v=>{
       edit('ajout de la boîte '+v,()=>{
-        if(DICO.mail.some(m=>canon(m.adresse)===canon(v))) return false;
-        const m = {code:nextCode('', DICO.mail.map(x=>x.code)), nominative:'O', adresse:v};
-        DICO.mail.push(m); p.boites = p.boites || []; p.boites.push(m.code); mpSort(p.boites);
+        if(ms.mail.some(m=>canon(m.adresse)===canon(v))) return false;
+        const m = {code:nextCode('', ms.mail.map(x=>x.code)), nominative:'O', adresse:v};
+        ms.mail.push(m); p.boites = p.boites || []; p.boites.push(m.code); mpSort(p.boites, ms);
       });
       draw();
     });
@@ -4713,8 +4783,8 @@ $('dicoAdd').onclick = ()=>{
     if(DICO.dossiers.indexOf(v)>=0) return false;
     DICO.dossiers.push(v); DICO.dossiers.sort((a,b)=>a.localeCompare(b,'fr'));
   }));
-  else if(DTAB==='mailp') newMail(null);
-  else if(DTAB==='mail') newBox();
+  else if(tb(DTAB)==='mailp'){ MS = msgOfTab(DTAB); newMail(null); }
+  else if(tb(DTAB)==='mail'){ MS = msgOfTab(DTAB); newBox(); }
   else if(DTAB==='eas') newEasily(null);
   else newDpi(null);
 };
@@ -4783,12 +4853,12 @@ function checks(){
     'La matrice renvoie à un profil de partage absent des Affectations (profils de partage).',it);
 
   it = [];
-  if(COL_MAIL) MAT.fonctions.forEach(f=>codesOf(f,COL_MAIL).forEach(c=>{
-    if(!MAILP[c]) it.push(goF(f,COL_MAIL,f.nom+' → '+c)); }));
+  MSGS.forEach(ms=>{ if(ms.col) MAT.fonctions.forEach(f=>codesOf(f,ms.col).forEach(c=>{
+    if(!ms.P[c]) it.push(goF(f,ms.col,f.nom+' → '+c+(ms.id ? ' ('+ms.nom+')' : ''))); })); });
   add('err','bko','Profils de messagerie introuvables','La matrice renvoie à un numéro absent des profils de messagerie.',it);
 
   it = [];
-  (DICO.mailp||[]).forEach(p=>(p.boites||[]).forEach(b=>{ if(!MAILS[b]) it.push(goD('mailp',p.code,'boîte '+b+' absente du catalogue')); }));
+  MSGS.forEach(ms=>ms.mailp.forEach(p=>(p.boites||[]).forEach(b=>{ if(!ms.B[b]) it.push(goD(msgTab(ms,'mailp'),p.code,'boîte '+b+' absente du catalogue')); })));
   add('err','bpko','Boîtes introuvables dans un profil de messagerie','Le profil cite une boîte qui n\'existe plus dans le catalogue.',it);
 
   it = [];
@@ -4929,12 +4999,12 @@ function checks(){
     'On sait que la fonction a '+EASN()+', pas avec quel profil.',it);
 
   it = [];
-  if(COL_MAIL) MAT.fonctions.forEach(f=>{ if(isX(cellOf(f,COL_MAIL)))
-    it.push(goF(f,COL_MAIL,f.nom,'messagerie sans n° de profil')); });
+  MSGS.forEach(ms=>{ if(ms.col) MAT.fonctions.forEach(f=>{ if(isX(cellOf(f,ms.col)))
+    it.push(goF(f,ms.col,f.nom,'messagerie sans n° de profil'+(ms.id ? ' ('+ms.nom+')' : ''))); }); });
   add('todo','mailx','Messagerie cochée sans profil',
     'On sait que la fonction a la messagerie, pas avec quelles boîtes.',it);
 
-  it = (DICO.mailp||[]).filter(p=>!(p.boites||[]).length).map(p=>goD('mailp',p.code,p.libelle||''));
+  it = []; MSGS.forEach(ms=>ms.mailp.filter(p=>!(p.boites||[]).length).forEach(p=>it.push(goD(msgTab(ms,'mailp'),p.code,p.libelle||''))));
   add('todo','mpvide','Profils de messagerie sans aucune boîte',
     'Le profil est attribué mais ses boîtes restent à cocher (Affectations › Profils messagerie › Boîtes…).',it);
 
@@ -4953,15 +5023,16 @@ function checks(){
   add('info','finut','Profils de partage attribués à aucune fonction',
     'Profil obsolète, ou fonction à compléter.',it);
 
-  it = (DICO.mailp||[]).filter(p=>!MAT.fonctions.some(f=>codesOf(f,COL_MAIL).indexOf(p.code)>=0))
-       .map(p=>goD('mailp',p.code,p.libelle||''));
+  it = []; MSGS.forEach(ms=>ms.mailp.filter(p=>!MAT.fonctions.some(f=>codesOf(f,ms.col).indexOf(p.code)>=0))
+       .forEach(p=>it.push(goD(msgTab(ms,'mailp'),p.code,p.libelle||''))));
   add('info','mpinut','Profils de messagerie attribués à aucune fonction',
     'Profil obsolète, ou fonction à compléter.',it);
 
-  const mpUsed = (DICO.mailp||[]).filter(p=>MAT.fonctions.some(f=>codesOf(f,COL_MAIL).indexOf(p.code)>=0));
-  it = DICO.mail.filter(m=>m.adresse && !/nominative/i.test(m.adresse) &&
+  it = [];
+  MSGS.forEach(ms=>{ const mpUsed = ms.mailp.filter(p=>MAT.fonctions.some(f=>codesOf(f,ms.col).indexOf(p.code)>=0));
+    ms.mail.filter(m=>m.adresse && !/nominative/i.test(m.adresse) &&
          !mpUsed.some(p=>(p.boites||[]).indexOf(m.code)>=0))
-       .map(m=>goD('mail',m.code,m.adresse));
+       .forEach(m=>it.push(goD(msgTab(ms,'mail'),m.code,m.adresse))); });
   add('info','binut','Boîtes partagées attribuées à aucune fonction',
     'La boîte existe mais aucun profil de messagerie attribué ne la contient.',it);
 
@@ -5244,10 +5315,11 @@ function openSearch(){
   DICO.partages.forEach(p=>items.push({cat:'Partage', label:p.code+' — '+(p.libelle||''),
       sub:plural(p.dossiers.length,'dossier'), value:JSON.stringify({t:'r',k:'Profil de partage|'+p.code+' — '+(p.libelle||'')})}));
   DICO.dossiers.forEach(d=>items.push({cat:'Dossier', label:d, value:JSON.stringify({t:'r',k:'Dossier partagé|'+d})}));
-  (DICO.mailp||[]).forEach(p=>items.push({cat:'Messagerie', label:p.code+' — '+(p.libelle||''),
-      sub:plural((p.boites||[]).length,'boîte'), value:JSON.stringify({t:'r',k:'Profil de messagerie|'+p.code+' — '+(p.libelle||'')})}));
-  DICO.mail.forEach(m=>items.push({cat:'Boîte', label:m.adresse||m.code, sub:m.code,
-      value:JSON.stringify({t:'r',k:'Boîte aux lettres|'+(m.adresse||m.code)})}));
+  MSGS.forEach(ms=>{ const sfx = ms.id ? ' '+ms.nom : '';
+    ms.mailp.forEach(p=>items.push({cat:'Messagerie'+sfx, label:p.code+' — '+(p.libelle||''),
+      sub:plural((p.boites||[]).length,'boîte'), value:JSON.stringify({t:'r',k:'Profil de messagerie'+sfx+'|'+p.code+' — '+(p.libelle||'')})}));
+    ms.mail.forEach(m=>items.push({cat:'Boîte'+sfx, label:m.adresse||m.code, sub:m.code,
+      value:JSON.stringify({t:'r',k:'Boîte aux lettres'+sfx+'|'+(m.adresse||m.code)})})); });
   DICO.easily.forEach(e=>items.push({cat:''+EASN()+'', label:e.num+' — '+(e.role||''),
       value:JSON.stringify({t:'r',k:'Profil '+EASN()+'|'+e.num+' — '+(e.role||'')})}));
   ALL.forEach(n=>items.push({cat:'Service ELAP', label:n.nom, value:JSON.stringify({t:'s',k:n.key})}));
@@ -6334,7 +6406,7 @@ function simHTML(A){
 /* sens d'un code, pour l'infobulle et la colonne de comparaison */
 function codeMeaning(a,c){
   if(a===COL_PART) return PART[c] ? (PART[c].libelle||'')+' · '+plural(PART[c].dossiers.length,'dossier') : 'profil inconnu';
-  if(a===COL_MAIL) return MAILP[c] ? (mpBoxes(MAILP[c]) || 'aucune boîte') : 'profil inconnu';
+  if(msgOfCol(a)){ MS = msgOfCol(a); return MS.P[c] ? (mpBoxes(MS.P[c]) || 'aucune boîte') : 'profil inconnu'; }
   if(a===COL_EAS)  return EAS[c] ? (EAS[c].role||'') : 'profil inconnu';
   if(COL_M.indexOf(a)>=0 && DPIS[c]) return DPIS[c].map(x=>x.nom).join(' ou ');
   return '';
@@ -6345,7 +6417,7 @@ function cmpVal(f,a){
   if(isQ(v)) return '<span class="b q">à confirmer</span>';
   if(a===COL_PLAN){ const p = elapOf(f); return '<span class="st">Oui</span>'+(p ? ' <span class="b pr" title="'+esc(p.nom)+'">'+esc(p.id)+'</span>' : ''); }
   if(isX(v)) return '<span class="st">Oui</span>';
-  if(a===COL_PART || a===COL_MAIL || a===COL_EAS || (COL_M.indexOf(a)>=0 && /^\d/.test(v)))
+  if(a===COL_PART || msgOfCol(a) || a===COL_EAS || (COL_M.indexOf(a)>=0 && /^\d/.test(v)))
     return splitCodes(v).map(c=>'<div><span class="b pr">'+esc(c)+'</span> <span class="hint">'+esc(codeMeaning(a,c))+'</span></div>').join('');
   return '<span class="b">'+esc(v)+'</span>';
 }
@@ -7340,17 +7412,17 @@ const DIMP = {
           e[k] = v; } },
   /* profils de messagerie : boîtes par adresse ou par code du catalogue ; une adresse inconnue crée la boîte */
   mailp:{ key:()=>dNumNom('mailp'), fields:()=>dCols('mailp',true).map(c=>({k:c.k, nom:c.nom+(c.k==='boites' ? ' (adresses séparées par des virgules)' : '')})),
-         ensure:c=>{ DICO.mailp = DICO.mailp || []; if(DICO.mailp.some(p=>p.code===c)) return false;
-           DICO.mailp.push({code:c, libelle:'', boites:[]}); return true; },
-         set:(c,k,v)=>{ const p = DICO.mailp.find(x=>x.code===c);
+         ensure:c=>{ MS.mailp = MS.mailp || []; if(MS.mailp.some(p=>p.code===c)) return false;
+           MS.mailp.push({code:c, libelle:'', boites:[]}); return true; },
+         set:(c,k,v)=>{ const p = MS.mailp.find(x=>x.code===c);
            if(k!=='boites'){ p[k] = v; return; }
-           listOf(v).forEach(x=>{ let m = DICO.mail.find(y=>y.code===x || canon(y.adresse)===canon(x));
-             if(!m){ m = {code:nextCode('', DICO.mail.map(y=>y.code)), nominative:'O', adresse:x}; DICO.mail.push(m); }
+           listOf(v).forEach(x=>{ let m = MS.mail.find(y=>y.code===x || canon(y.adresse)===canon(x));
+             if(!m){ m = {code:nextCode('', MS.mail.map(y=>y.code)), nominative:'O', adresse:x}; MS.mail.push(m); }
              if(p.boites.indexOf(m.code)<0) p.boites.push(m.code); });
            mpSort(p.boites); } },
   mail:{ key:()=>dNumNom('mail'), fields:()=>dCols('mail',true).map(c=>({k:c.k, nom:c.nom+(c.k==='nominative' ? ' (O/N)' : '')})),
-         ensure:c=>{ if(DICO.mail.some(m=>m.code===c)) return false; DICO.mail.push({code:c, nominative:'', adresse:''}); return true; },
-         set:(c,k,v)=>{ DICO.mail.find(m=>m.code===c)[k] = v; } },
+         ensure:c=>{ if(MS.mail.some(m=>m.code===c)) return false; MS.mail.push({code:c, nominative:'', adresse:''}); return true; },
+         set:(c,k,v)=>{ MS.mail.find(m=>m.code===c)[k] = v; } },
   part:{ key:()=>dNumNom('part'), fields:()=>dCols('part',true).map(c=>({k:c.k, nom:c.nom+(c.k==='dossiers' ? ' (séparés par des virgules, droit entre parenthèses : « Cuisine (L) »)' : '')})),
          ensure:c=>{ if(DICO.partages.some(p=>p.code===c)) return false; DICO.partages.push({code:c, libelle:'', dossiers:[]}); return true; },
          set:(c,k,v)=>{ const p = DICO.partages.find(x=>x.code===c);
@@ -7370,7 +7442,8 @@ const DIMP = {
          ensure:n=>{ if(DICO.dossiers.indexOf(n)>=0) return false; DICO.dossiers.push(n); DICO.dossiers.sort((a,b)=>a.localeCompare(b,'fr')); return true; } }
 };
 function dicoPaste(){
-  const D = DIMP[DTAB]; if(!D) return;
+  const D = DIMP[tb(DTAB)]; if(!D) return;
+  if(isMsgTab(DTAB)) MS = msgOfTab(DTAB);
   if(DTAB==='eas' || DTAB==='uf' || DTAB==='ag'){ if(!easLists() && easTexte()){ easConvert(); return; } }
   const F = [{k:'__key', nom:D.key()+' (obligatoire)'}].concat(D.fields());
   let rows = [], titres = false, map = [];
@@ -8582,10 +8655,12 @@ function imgTables(){
       rows:DICO.partages.map(p=>[{t:p.code, b:1}].concat(cols.map(c=>c.k==='dossiers'
         ? {chips:p.dossiers.map(d=>{ const r = pDroit(p,d); return r ? {t:d, tag:PCOURT[r], leg:PDROIT[r], k:r} : {t:d}; }), none:'aucun dossier'}
         : cellT(p,c.k))))}); }
-  if(ok('mailp') && (DICO.mailp||[]).length){ const cols = dCols('mailp');
-    T.push({id:'messagerie', label:dName('mailp'), head:[dNumNom('mailp')].concat(cols.map(c=>c.nom)),
-      rows:DICO.mailp.map(p=>[{t:p.code, b:1}].concat(cols.map(c=>c.k==='boites'
-        ? {chips:(p.boites||[]).map(b=>({t:boxTxt(b)})), none:'aucune boîte'} : cellT(p,c.k))))}); }
+  MSGS.forEach(ms=>{ MS = ms; const k = msgTab(ms,'mailp');
+    if(ok('mailp') && ms.mailp.length){ const cols = dCols('mailp');
+      T.push({id:'messagerie'+(ms.id ? '-'+ms.id : ''), label:dName(k), head:[dNumNom('mailp')].concat(cols.map(c=>c.nom)),
+        rows:ms.mailp.map(p=>[{t:p.code, b:1}].concat(cols.map(c=>c.k==='boites'
+          ? {chips:(p.boites||[]).map(b=>({t:boxTxt(b)})), none:'aucune boîte'} : cellT(p,c.k))))}); } });
+  MS = MSGS[0];
   if(ok('eas') && dpiOn() && DICO.easily.length){ const cols = easCols();
     T.push({id:'profils-dossier-patient', label:dName('eas'), head:[easNumNom()].concat(cols.map(c=>c.nom)),
       rows:DICO.easily.map(e=>[{t:e.num, b:1}].concat(cols.map(c=>{
@@ -8886,7 +8961,7 @@ function plain(f,a,v){
   if(isQ(v)) return 'À confirmer';
   if(a===COL_PART) return splitCodes(v).map(c=>{ const p = PART[c];
     return p ? c+(p.libelle?' '+p.libelle:'')+' : '+(p.dossiers.map(d=>foldTxt(p,d)).join(', ')||'aucun dossier listé') : c+' : profil inconnu'; }).join('\n');
-  if(a===COL_MAIL) return splitCodes(v).map(c=>{ const p = MAILP[c];
+  if(msgOfCol(a)) return (MS = msgOfCol(a), splitCodes(v)).map(c=>{ const p = MS.P[c];
     return !p ? 'Profil '+c+' : inconnu' : 'Profil '+c+' : '+(mpBoxes(p) || 'aucune boîte listée'); }).join('\n');
   if(a===COL_EAS){
     if(isX(v)) return 'Oui, sans n° de profil';
@@ -8953,16 +9028,19 @@ function buildXlsx(){
     style:()=>XS.wrap});
 
   const numOf = c => /^\d+$/.test(String(c)) ? +c : String(c||'');
-  if(!dOff('mailp')) S.push({name:'Profils messagerie', head:true, filter:true, freeze:{r:1}, widths:[6,40,70,60],
-    rows:[['N°','Libellé','Boîtes','Fonctions']].concat((DICO.mailp||[]).map(p=>
-      [numOf(p.code), p.libelle||'', mpBoxes(p), usedBy(f=>splitCodes(cellOf(f,COL_MAIL)).indexOf(p.code)>=0)])),
-    style:()=>XS.wrap});
+  MSGS.forEach(ms=>{ MS = ms;
+    const nm = k => dName(msgTab(ms,k)).slice(0,31);
+    if(!dOff('mailp')) S.push({name:nm('mailp'), head:true, filter:true, freeze:{r:1}, widths:[6,40,70,60],
+      rows:[['N°','Libellé','Boîtes','Fonctions']].concat(ms.mailp.map(p=>
+        [numOf(p.code), p.libelle||'', mpBoxes(p), usedBy(f=>splitCodes(cellOf(f,ms.col)).indexOf(p.code)>=0)])),
+      style:()=>XS.wrap});
 
-  if(!dOff('mail')) S.push({name:'Boîtes aux lettres', head:true, filter:true, freeze:{r:1}, widths:[40,20,70],
-    rows:[['Adresse','Profils','Fonctions']].concat(DICO.mail.map(m=>{
-      const codes = (DICO.mailp||[]).filter(p=>(p.boites||[]).indexOf(m.code)>=0).map(p=>p.code);
-      return [m.adresse||'', codes.join(', '), usedBy(f=>splitCodes(cellOf(f,COL_MAIL)).some(c=>codes.indexOf(c)>=0))]; })),
-    style:()=>XS.wrap});
+    if(!dOff('mail')) S.push({name:nm('mail'), head:true, filter:true, freeze:{r:1}, widths:[40,20,70],
+      rows:[['Adresse','Profils','Fonctions']].concat(ms.mail.map(m=>{
+        const codes = ms.mailp.filter(p=>(p.boites||[]).indexOf(m.code)>=0).map(p=>p.code);
+        return [m.adresse||'', codes.join(', '), usedBy(f=>splitCodes(cellOf(f,ms.col)).some(c=>codes.indexOf(c)>=0))]; })),
+      style:()=>XS.wrap}); });
+  MS = MSGS[0];
 
   /* les UF et les agendas avec leurs informations (Dictionnaires › UF / Agendas › Liste) ; agendas :
      seulement s'ils ont des colonnes d'informations, sinon la feuille n'apporterait rien */
